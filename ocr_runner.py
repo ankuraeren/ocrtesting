@@ -5,6 +5,8 @@ import streamlit as st
 from PIL import Image
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df
 from st_aggrid import AgGrid, GridOptionsBuilder
+from ocr_utils import flatten_json
+
 
 # Function to generate a DataFrame with mismatched fields
 def generate_mismatch_df(json1, json2, comparison_results):
@@ -24,6 +26,31 @@ def generate_mismatch_df(json1, json2, comparison_results):
     # Create a DataFrame with only the mismatched fields
     df = pd.DataFrame(data, columns=['Field', 'Result with Extra Accuracy', 'Result without Extra Accuracy'])
     return df
+
+# Function to flatten nested JSON
+def flatten_json(y):
+    """
+    This function flattens a nested JSON object into a dictionary.
+    """
+    out = {}
+    order = []
+
+    def flatten(x, name=''):
+        if isinstance(x, dict):
+            for a in x:
+                flatten(x[a], name + a + '.')
+        elif isinstance(x, list):
+            i = 0
+            for a in x:
+                flatten(a, name + str(i) + '.')
+                i += 1
+        else:
+            out[name[:-1]] = x
+            order.append(name[:-1])
+    flatten(y)
+    return out, order
+
+
 
 # Main OCR parser function
 def run_parser(parsers):
