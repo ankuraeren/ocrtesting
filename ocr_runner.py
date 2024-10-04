@@ -9,6 +9,8 @@ import logging
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder
 import time
+from parsers.ocr_runner import run_parser
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
