@@ -3,9 +3,9 @@ import tempfile
 import shutil
 import streamlit as st
 from PIL import Image
+from PyPDF2 import PdfReader
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from st_aggrid import AgGrid, GridOptionsBuilder
-import json
 
 # Main OCR parser function
 def run_parser(parsers):
@@ -75,20 +75,8 @@ def run_parser(parsers):
                     with open(pdf_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
 
-                    # Provide a link to view the PDF
-                    st.write(f"**Uploaded PDF:** {uploaded_file.name}")
-                    with open(pdf_path, "rb") as f:
-                        st.download_button(
-                            label="Download PDF",
-                            data=f,
-                            file_name=uploaded_file.name,
-                            mime="application/pdf"
-                        )
-
-                    # Provide a link to view the PDF in a new tab
-                    pdf_link = f'<a href="file://{pdf_path}" target="_blank">Click here to view the PDF</a>'
-                    st.markdown(pdf_link, unsafe_allow_html=True)
-
+                    # Display PDF filename
+                    st.markdown(f"**Uploaded PDF:** {uploaded_file.name}")
                     file_paths.append(pdf_path)
 
                 else:
