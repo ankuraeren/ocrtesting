@@ -1,0 +1,44 @@
+{
+    "Kors Cheque Front": {
+        "api_key": "Korsf2446-4cfa-408b-86ef-04ad876bf2fc",
+        "parser_app_id": "KorsCjhqe35opbcm",
+        "extra_accuracy": true,
+        "expected_response": "",
+        "sample_curl": "curl --location 'https://prod-ml.fracto.tech/upload-file-smart-ocr' \\ --header 'x-api-key: Korsf2446-4cfa-408b-86ef-04ad876bf2fc' \\ --form 'file=@\"/Users/gagankapoor/Downloads/Main Folder/Cheque Front/4 _ --form 'parserApp=\"KorsCjhqe35opbcm\"' \\ --form 'user _ ip=\"127.0.0.1\"' \\ --form 'location=\"delhi\"' \\ --form 'user _ agent=\"Dummy-device-testing11\"'"
+    },
+    "Kores CD Slip": {
+        "api_key": "Korsf2446-4cfa-408b-86ef-04ad876bf2fc",
+        "parser_app_id": "KorsSLPSGacke35o",
+        "extra_accuracy": true,
+        "expected_response": "",
+        "sample_curl": "curl --location 'https://prod-ml.fracto.tech/upload-file-smart-ocr' \\\n--header 'x-api-key: Korsf2446-4cfa-408b-86ef-04ad876bf2fc' \\\n--form 'file=@\"/Users/gagankapoor/Downloads/Main Folder/Slips/1_BOT_RGB _(73).jpg\"' \\\n--form 'parserApp=\"KorsSLPSGacke35o\"' \\\n--form 'user_ip=\"127.0.0.1\"' \\\n--form 'location=\"delhi\"' \\\n--form 'user_agent=\"Dummy-device-testing11\"' \\\n--form 'extra_accuracy=\"true\"'"
+    },
+    "Kors Cheque Back": {
+        "api_key": "Korsf2446-4cfa-408b-86ef-04ad876bf2fc",
+        "parser_app_id": "KorsCbacke35opbc",
+        "extra_accuracy": true,
+        "expected_response": "",
+        "sample_curl": "curl --location 'https://prod-ml.fracto.tech/upload-file-smart-ocr' \\\n--header 'x-api-key: Korsf2446-4cfa-408b-86ef-04ad876bf2fc' \\\n--form 'file=@\"/Users/gagankapoor/Downloads/2_Back (2).jpg\"' \\\n--form 'parserApp=\"KorsCbacke35opbc\"' \\\n--form 'user_ip=\"127.0.0.1\"' \\\n--form 'location=\"delhi\"' \\\n--form 'user_agent=\"Dummy-device-testing11\"' \\\n--form 'extra_accuracy=\"true\"'"
+    },
+    "Kors KYC Form": {
+        "api_key": "Korsf2446-4cfa-408b-86ef-04ad876bf2fc",
+        "parser_app_id": "KorsKYCGacke35o",
+        "extra_accuracy": true,
+        "expected_response": "",
+        "sample_curl": ""
+    },
+    "Kores RTGS Form": {
+        "api_key": "Korsf2446-4cfa-408b-86ef-04ad876bf2fc",
+        "parser_app_id": "KorsRTASGacke35o",
+        "extra_accuracy": false,
+        "expected_response": "",
+        "sample_curl": ""
+    },
+    "Accomation  OCR service for Invoice Parsing": {
+        "api_key": "acc2ce-2376-84ba-b1bd-c826482c2534",
+        "parser_app_id": "accinv12bjfsebhj",
+        "extra_accuracy": true,
+        "expected_response": "",
+        "sample_curl": ""
+    }
+}
