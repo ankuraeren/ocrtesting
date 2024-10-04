@@ -69,8 +69,11 @@ def send_to_ocr_api(image_paths, parser_info):
             mime_type = f"image/{file_extension[1:]}" if file_extension != ".pdf" else "application/pdf"
             files.append(('file', (os.path.basename(image_path), file, mime_type)))
 
+    # Retrieve the API endpoint from Streamlit secrets
+    api_endpoint = st.secrets["api"]["endpoint"]
+
     try:
-        response = requests.post("YOUR_OCR_API_ENDPOINT", headers=headers, data=form_data, files=files)
+        response = requests.post(api_endpoint, headers=headers, data=form_data, files=files)
         response.raise_for_status()  # Raise exception for any errors
         return response.json()  # Assuming the API returns JSON response
 
