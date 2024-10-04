@@ -9,7 +9,7 @@ import requests
 import logging
 
 # Access ChatGPT-4O API key from Streamlit secrets
-CHATGPT_API_KEY = st.secrets["chatgpt"]["chatgpt_api_key"]
+CHATGPT_API_KEY = st.secrets["api"]["chatgpt_api_key"]
 
 
 # Function to get validation suggestion using OpenAI GPT-4O API
