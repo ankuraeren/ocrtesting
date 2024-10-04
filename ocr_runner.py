@@ -5,51 +5,46 @@ import tempfile
 import os
 import shutil
 
-import streamlit as st
-from PIL import Image
-import PyMuPDF  # PyMuPDF (or fitz) to handle PDFs
-import tempfile
-import os
-
 # Function to handle image and PDF upload
 def handle_file_upload(uploaded_files):
     """Process uploaded image or PDF files and convert PDFs to images."""
     image_paths = []
     temp_dirs = []
-
+    
     for uploaded_file in uploaded_files:
         file_type = uploaded_file.type
         temp_dir = tempfile.mkdtemp()  # Create a temporary directory
         temp_dirs.append(temp_dir)
 
-        # Save the uploaded file to the temp directory first
-        file_path = os.path.join(temp_dir, uploaded_file.name)
-
-        # Write the uploaded file to the temporary file path
-        with open(file_path, 'wb') as f:
-            f.write(uploaded_file.getbuffer())
-
         # Handling Image files (jpg, png, etc.)
         if file_type in ["image/jpeg", "image/png"]:
-            image = Image.open(file_path)
-            image_paths.append(file_path)
+            image = Image.open(uploaded_file)
+            image_path = os.path.join(temp_dir, uploaded_file.name)
+            image.save(image_path)
+            image_paths.append(image_path)
             st.image(image, caption=uploaded_file.name, use_column_width=True)
 
         # Handling PDF files
         elif file_type == "application/pdf":
-            pdf_reader = PyMuPDF.open(file_path)
+            # Save uploaded PDF as a temporary file
+            pdf_path = os.path.join(temp_dir, uploaded_file.name)
+            with open(pdf_path, 'wb') as f:
+                f.write(uploaded_file.read())  # Write the uploaded file to disk
+            
+            # Open the saved PDF using PyMuPDF
+            pdf_reader = fitz.open(pdf_path)  # Now, fitz can read it from a valid path
             for page_num in range(pdf_reader.page_count):
                 page = pdf_reader.load_page(page_num)
-                image = page.get_pixmap()
+                pix = page.get_pixmap()
                 image_path = os.path.join(temp_dir, f"page_{page_num + 1}.png")
-                image.save(image_path)
+                pix.save(image_path)
                 image_paths.append(image_path)
                 st.image(image_path, caption=f"Page {page_num + 1} from {uploaded_file.name}", use_column_width=True)
+
         else:
             st.error(f"Unsupported file type: {file_type}")
 
     return image_paths, temp_dirs
-
 
 
 def run_parser(parsers):
