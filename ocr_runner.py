@@ -3,10 +3,9 @@ import tempfile
 import shutil
 import streamlit as st
 from PIL import Image
-from ocr_utils import send_request, generate_comparison_results, generate_comparison_df  # Keep utility imports
+from ocr_utils import send_request, generate_comparison_results, generate_comparison_df
 from st_aggrid import AgGrid, GridOptionsBuilder
 
-# Do not import run_parser from itself!
 # Main OCR parser function
 def run_parser(parsers):
     st.subheader("Run OCR Parser")
@@ -14,8 +13,42 @@ def run_parser(parsers):
         st.info("No parsers available. Please add a parser first.")
         return
 
+    # Add the same custom CSS for radio buttons as used in the sidebar
+    st.markdown("""
+        <style>
+        .stRadio [role=radiogroup] {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        div[role='radiogroup'] label div[data-testid='stMarkdownContainer'] {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFFFFF;
+        }
+        div[role='radiogroup'] label {
+            background-color: #2B2B2B;
+            padding: 10px 15px;
+            border-radius: 12px;
+            border: 1px solid #3B3B3B;
+            cursor: pointer;
+        }
+        div[role='radiogroup'] label:hover {
+            background-color: #474747;
+        }
+        div[role='radiogroup'] input[type='radio']:checked + label {
+            background-color: #FF5F5F;
+            border-color: #FF5F5F;
+        }
+        div[role='radiogroup'] input[type='radio']:checked + label div[data-testid='stMarkdownContainer'] {
+            color: #FFFFFF;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Convert parser selection into radio buttons with the custom style
     parser_names = list(parsers.keys())
-    selected_parser = st.selectbox("Select Parser", parser_names)
+    selected_parser = st.radio("Select Parser", parser_names)
     parser_info = parsers[selected_parser]
 
     st.write(f"**Selected Parser:** {selected_parser}")
