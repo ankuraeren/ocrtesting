@@ -26,7 +26,7 @@ def handle_file_upload(uploaded_files):
 
         # Handling PDF files
         elif file_type == "application/pdf":
-            pdf_reader = PyMuPDF.open(uploaded_file)
+            pdf_reader = fitz.open(uploaded_file)  # Use 'fitz' instead of 'PyMuPDF'
             for page_num in range(pdf_reader.page_count):
                 page = pdf_reader.load_page(page_num)
                 image = page.get_pixmap()
