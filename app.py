@@ -3,11 +3,13 @@ from github_utils import download_parsers_from_github, upload_parsers_to_github
 from parser_utils import add_new_parser, list_parsers
 from ocr_runner import run_parser
 
-# Initialize session state for parsers if not already initialized
+# Ensure session state is initialized
 if 'parsers' not in st.session_state:
     st.session_state['parsers'] = {}
 
 def main():
+    # Other logic here
+
     st.set_page_config(page_title="FRACTO OCR Parser", layout="wide")
 
     st.markdown("""
