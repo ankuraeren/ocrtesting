@@ -1,108 +1,117 @@
+import os
+import json
+import requests
 import streamlit as st
 from PIL import Image
-import fitz  # Correct import for PyMuPDF
 import tempfile
-import os
 import shutil
-import requests
+import logging
+import pandas as pd
+from st_aggrid import AgGrid, GridOptionsBuilder
+import time
 
-# Function to handle image and PDF upload
-def handle_file_upload(uploaded_files):
-    """Process uploaded image or PDF files and convert PDFs to images."""
-    image_paths = []
-    temp_dirs = []
-    
-    for uploaded_file in uploaded_files:
-        file_type = uploaded_file.type
-        temp_dir = tempfile.mkdtemp()  # Create a temporary directory
-        temp_dirs.append(temp_dir)
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
-        # Handling Image files (jpg, png, etc.)
-        if file_type in ["image/jpeg", "image/png"]:
-            image = Image.open(uploaded_file)
-            image_path = os.path.join(temp_dir, uploaded_file.name)
-            image.save(image_path)
-            image_paths.append(image_path)
-            st.image(image, caption=uploaded_file.name, use_column_width=True)
+# Load secrets
+API_ENDPOINT = st.secrets["api"]["endpoint"]
 
-        # Handling PDF files
-        elif file_type == "application/pdf":
-            # Save uploaded PDF as a temporary file
-            pdf_path = os.path.join(temp_dir, uploaded_file.name)
-            with open(pdf_path, 'wb') as f:
-                f.write(uploaded_file.read())  # Write the uploaded file to disk
-            
-            # Open the saved PDF using PyMuPDF
-            pdf_reader = fitz.open(pdf_path)  # Now, fitz can read it from a valid path
-            for page_num in range(pdf_reader.page_count):
-                page = pdf_reader.load_page(page_num)
-                pix = page.get_pixmap()
-                image_path = os.path.join(temp_dir, f"page_{page_num + 1}.png")
-                pix.save(image_path)
-                image_paths.append(image_path)
-                st.image(image_path, caption=f"Page {page_num + 1} from {uploaded_file.name}", use_column_width=True)
+# Function to flatten nested JSON
+def flatten_json(y):
+    out = {}
+    order = []
 
+    def flatten(x, name=''):
+        if isinstance(x, dict):
+            for a in x:
+                flatten(x[a], name + a + '.')
+        elif isinstance(x, list):
+            i = 0
+            for a in x:
+                flatten(a, name + str(i) + '.')
+                i += 1
         else:
-            st.error(f"Unsupported file type: {file_type}")
+            out[name[:-1]] = x
+            order.append(name[:-1])
+    flatten(y)
+    return out, order
 
-    return image_paths, temp_dirs
+# Function to generate comparison results
+def generate_comparison_results(json1, json2):
+    flat_json1, order1 = flatten_json(json1)
+    flat_json2, _ = flatten_json(json2)
 
+    comparison_results = {}
+    for key in order1:
+        val1 = flat_json1.get(key, "N/A")
+        val2 = flat_json2.get(key, "N/A")
+        match = (val1 == val2)
+        comparison_results[key] = "✔" if match else "✘"
+    return comparison_results
 
-# Function to send images to OCR API
-def send_to_ocr_api(image_paths, parser_info):
-    """Send the images to the OCR API and return the result."""
-    headers = {
-        'x-api-key': parser_info['api_key'],  # Replace with correct API key header
-    }
+# Function to generate comparison DataFrame
+def generate_comparison_df(json1, json2, comparison_results):
+    flat_json1, order1 = flatten_json(json1)
+    flat_json2, _ = flatten_json(json2)
 
-    form_data = {
-        'parserApp': parser_info['parser_app_id'],
-        'user_ip': '127.0.0.1',
-        'location': 'delhi',
-        'user_agent': 'Dummy-device-testing11',
-    }
+    data = []
+    for key in order1:
+        val1 = flat_json1.get(key, "N/A")
+        val2 = flat_json2.get(key, "N/A")
+        match = comparison_results[key]
+        data.append([key, val1, val2, match])
 
+    df = pd.DataFrame(data, columns=['Attribute', 'Result with Extra Accuracy', 'Result without Extra Accuracy', 'Comparison'])
+    return df
+
+# Function to send OCR request
+def send_request(image_paths, headers, form_data, extra_accuracy):
+    local_headers = headers.copy()
+    local_form_data = form_data.copy()
+
+    if extra_accuracy:
+        local_form_data['extra_accuracy'] = 'true'
+
+    # List of files to upload
     files = []
     for image_path in image_paths:
+        _, file_ext = os.path.splitext(image_path.lower())
+        mime_types = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.bmp': 'image/bmp',
+            '.gif': 'image/gif',
+            '.tiff': 'image/tiff',
+            '.pdf': 'application/pdf'
+        }
+        mime_type = mime_types.get(file_ext, 'application/octet-stream')
         try:
-            # Ensure the file exists and is accessible
-            if os.path.exists(image_path):
-                file_extension = os.path.splitext(image_path)[1].lower()
-                mime_type = f"image/{file_extension[1:]}" if file_extension != ".pdf" else "application/pdf"
-                files.append(('file', (os.path.basename(image_path), open(image_path, 'rb'), mime_type)))
-            else:
-                st.error(f"File not found: {image_path}")
-                return None
+            files.append(('file', (os.path.basename(image_path), open(image_path, 'rb'), mime_type)))
         except Exception as e:
             st.error(f"Error opening file {image_path}: {e}")
-            return None
-
-    # Retrieve the API endpoint from Streamlit secrets
-    api_endpoint = st.secrets["api"]["endpoint"]
+            return None, 0
 
     try:
-        response = requests.post(api_endpoint, headers=headers, data=form_data, files=files)
-        response.raise_for_status()  # Raise exception for any errors
-        return response.json()  # Assuming the API returns JSON response
-
+        start_time = time.time()
+        response = requests.post(API_ENDPOINT, headers=local_headers, data=local_form_data, files=files if files else None, timeout=120)
+        time_taken = time.time() - start_time
+        return response, time_taken
     except requests.exceptions.RequestException as e:
         st.error(f"Error in OCR request: {e}")
-        return None
-
+        return None, 0
     finally:
-        # Close all file objects
-        for _, (filename, file_obj, _) in files:
-            file_obj.close()
+        # Cleanup files
+        for _, file_tuple in files:
+            file_tuple[1].close()
 
-
+# Main OCR parser function
 def run_parser(parsers):
-    """Run the selected OCR parser."""
     st.subheader("Run OCR Parser")
     if not parsers:
         st.info("No parsers available. Please add a parser first.")
         return
 
-    # Parser selection dropdown
     parser_names = list(parsers.keys())
     selected_parser = st.selectbox("Select Parser", parser_names)
     parser_info = parsers[selected_parser]
@@ -111,42 +120,96 @@ def run_parser(parsers):
     st.write(f"**Parser App ID:** {parser_info['parser_app_id']}")
     st.write(f"**Extra Accuracy Required:** {'Yes' if parser_info['extra_accuracy'] else 'No'}")
 
-    # Adding file upload section
-    input_method = st.radio("Choose Input Method", ("Upload Image/PDF File", "Enter Image URL"))
-
     image_paths = []
     temp_dirs = []
 
-    if input_method == "Upload Image/PDF File":
-        # Allow uploading multiple image or PDF files
-        uploaded_files = st.file_uploader(
-            "Choose image or PDF file(s)...",
-            type=["jpg", "jpeg", "png", "bmp", "gif", "tiff", "pdf"],  # Supports image and PDF file types
-            accept_multiple_files=True
-        )
-        if uploaded_files:
-            image_paths, temp_dirs = handle_file_upload(uploaded_files)
-    
-    elif input_method == "Enter Image URL":
-        # Handle URL input (if needed)
-        image_urls = st.text_area("Enter Image URLs (one per line)")
-        # Process URLs here...
+    # File uploader
+    uploaded_files = st.file_uploader("Choose image or PDF file(s)...", type=["jpg", "jpeg", "png", "bmp", "gif", "tiff", "pdf"], accept_multiple_files=True)
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            try:
+                image = Image.open(uploaded_file)
+                st.image(image, caption=uploaded_file.name, use_column_width=True)
+                temp_dir = tempfile.mkdtemp()
+                temp_dirs.append(temp_dir)
+                image_path = os.path.join(temp_dir, uploaded_file.name)
+                image.save(image_path)
+                image_paths.append(image_path)
+            except Exception as e:
+                st.error(f"Error processing file {uploaded_file.name}: {e}")
 
+    # Run OCR button
     if st.button("Run OCR"):
         if not image_paths:
-            st.error("Please provide at least one image or PDF.")
+            st.error("Please provide at least one image.")
             return
-        
-        # Proceed with OCR processing
-        with st.spinner("Processing OCR..."):
-            ocr_response = send_to_ocr_api(image_paths, parser_info)
 
-        # Display OCR result
-        if ocr_response:
-            st.success("OCR processing complete!")
-            st.json(ocr_response)  # Display OCR result as JSON
+        headers = {
+            'x-api-key': parser_info['api_key'],
+        }
+
+        form_data = {
+            'parserApp': parser_info['parser_app_id'],
+            'user_ip': '127.0.0.1',
+            'location': 'delhi',
+            'user_agent': 'Dummy-device-testing11',
+        }
+
+        with st.spinner("Processing OCR..."):
+            response_extra, time_taken_extra = send_request(image_paths, headers, form_data, True)
+            response_no_extra, time_taken_no_extra = send_request(image_paths, headers, form_data, False)
 
         # Cleanup temporary directories
         for temp_dir in temp_dirs:
-            shutil.rmtree(temp_dir)
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception as e:
+                st.warning(f"Could not remove temporary directory {temp_dir}: {e}")
 
+        if response_extra and response_no_extra:
+            success_extra = response_extra.status_code == 200
+            success_no_extra = response_no_extra.status_code == 200
+
+            # Display results in two columns
+            col1, col2 = st.columns(2)
+
+            if success_extra:
+                try:
+                    response_json_extra = response_extra.json()
+                    with col1:
+                        st.expander(f"Results with Extra Accuracy - ⏱ {time_taken_extra:.2f}s").json(response_json_extra)
+                except json.JSONDecodeError:
+                    with col1:
+                        st.error("Failed to parse JSON response with Extra Accuracy.")
+            else:
+                with col1:
+                    st.error(f"Request with Extra Accuracy failed. Status code: {response_extra.status_code}")
+
+            if success_no_extra:
+                try:
+                    response_json_no_extra = response_no_extra.json()
+                    with col2:
+                        st.expander(f"Results without Extra Accuracy - ⏱ {time_taken_no_extra:.2f}s").json(response_json_no_extra)
+                except json.JSONDecodeError:
+                    with col2:
+                        st.error("Failed to parse JSON response without Extra Accuracy.")
+            else:
+                with col2:
+                    st.error(f"Request without Extra Accuracy failed. Status code: {response_no_extra.status_code}")
+
+            # Generate comparison results
+            st.subheader("Comparison JSON")
+            if success_extra and success_no_extra:
+                comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
+                st.expander("Comparison JSON").json(comparison_results)
+                
+                st.subheader("Comparison Table")
+                comparison_table = generate_comparison_df(response_json_extra, response_json_no_extra, comparison_results)
+                gb = GridOptionsBuilder.from_dataframe(comparison_table)
+                gb.configure_pagination(paginationAutoPageSize=True)
+                gb.configure_side_bar()
+                gb.configure_selection('single')
+                grid_options = gb.build()
+                AgGrid(comparison_table, gridOptions=grid_options, height=500, theme='streamlit', enable_enterprise_modules=True)
+            else:
+                st.error("Comparison failed. One or both requests were unsuccessful.")
