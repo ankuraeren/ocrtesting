@@ -1,19 +1,9 @@
 import os
-import json
-import streamlit as st
-import logging
-import tempfile
-
-# Define local parsers file path using a temporary directory
-LOCAL_PARSERS_FILE = os.path.join(tempfile.gettempdir(), 'parsers.json')
-
-import os
 import base64
 import requests
 import tempfile
 import logging
 import streamlit as st
-from parser_utils import load_parsers  # Ensure this import is present
 
 LOCAL_PARSERS_FILE = os.path.join(tempfile.gettempdir(), 'parsers.json')
 
