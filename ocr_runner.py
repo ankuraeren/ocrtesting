@@ -13,19 +13,16 @@ CHATGPT_API_KEY = st.secrets["api"]["chatgpt_api_key"]
 
 
 # Function to get validation suggestion using OpenAI GPT-4O API
+import logging
+
 def get_validation_suggestion(mismatch_field, image_context):
-    # Construct the prompt
     prompt = f"Provide a validation suggestion for the mismatched field '{mismatch_field}' based on the following image context. " \
              f"The suggestion should be no more than 50 characters. Image context: {image_context}"
 
-    # API URL and model information
     API_URL = "https://api.openai.com/v1/chat/completions"
-    MODEL = "gpt-4o-2024-08-06"  # Using GPT-4O model version
-
-    # Load the API key from secrets
+    MODEL = "gpt-4o-2024-08-06"
     CHATGPT_API_KEY = st.secrets["chatgpt"]["api_key"]
 
-    # Prepare the payload for OpenAI's ChatGPT API
     payload = {
         "model": MODEL,
         "messages": [
@@ -33,34 +30,25 @@ def get_validation_suggestion(mismatch_field, image_context):
             {"role": "user", "content": prompt}
         ],
         "max_tokens": 50,
-        "temperature": 0.7  # Adjust temperature if needed for more creative/precise results
+        "temperature": 0.7
     }
 
     headers = {
-        'Authorization': f'Bearer {CHATGPT_API_KEY}',  # API Key in Authorization header
+        'Authorization': f'Bearer {CHATGPT_API_KEY}',
         'Content-Type': 'application/json'
     }
 
-    # Try making the API request to OpenAI
     try:
+        logging.info(f"Sending request to {API_URL} with payload: {payload}")
         response = requests.post(API_URL, headers=headers, json=payload)
-        if response.status_code == 200:
-            # Parse the suggestion from the API response
-            response_json = response.json()
-            suggestion = response_json['choices'][0]['message']['content']
-            return suggestion
-        else:
-            # Log and return an error if the request was unsuccessful
-            logging.error(f"OpenAI API Error: {response.status_code} - {response.text}")
-            return f"API Error: {response.status_code} - Unable to fetch suggestion"
+        response.raise_for_status()  # Will raise an HTTPError for bad responses
+        response_json = response.json()
+        suggestion = response_json['choices'][0]['message']['content']
+        return suggestion
     except requests.exceptions.RequestException as e:
-        # Log and handle any connection issues
-        logging.error(f"Connection Error: {str(e)}")
-        return "Connection Error: Unable to reach ChatGPT API"
-    except Exception as e:
-        # Log and handle any other errors
-        logging.error(f"Unexpected Error: {str(e)}")
-        return f"Error: {str(e)}"
+        logging.error(f"Request failed: {e}")
+        return f"Connection Error: {e}"
+
 
 # Main OCR parser function
 def run_parser(parsers):
