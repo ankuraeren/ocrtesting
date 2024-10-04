@@ -11,7 +11,6 @@ import json
 LOCAL_PARSERS_FILE = os.path.join(tempfile.gettempdir(), 'parsers.json')
 
 def load_parsers():
-    """Loads parsers from the local file."""
     if os.path.exists(LOCAL_PARSERS_FILE):
         try:
             with open(LOCAL_PARSERS_FILE, 'r') as f:
@@ -23,6 +22,9 @@ def load_parsers():
         except Exception as e:
             st.error(f"Unexpected error while loading `parsers.json`: {e}")
             logging.error(f"Unexpected error while loading `parsers.json`: {e}")
+    else:
+        st.error("`parsers.json` does not exist locally. Please download it from GitHub.")
+        logging.error("`parsers.json` does not exist locally.")
     else:
         st.error("`parsers.json` does not exist locally. Please download it from GitHub.")
         logging.error("`parsers.json` does not exist locally.")
