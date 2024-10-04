@@ -9,7 +9,7 @@ import logging
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder
 import time
-from parsers.ocr_runner import run_parser
+from ocr_runner import run_parser
 
 
 # Configure logging
