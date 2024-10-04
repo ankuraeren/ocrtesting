@@ -1,23 +1,7 @@
-# main.py
-
 import streamlit as st
-import logging
-
-from parsers.github_manager import download_parsers_from_github, upload_parsers_to_github
-from parsers.parser_manager import add_new_parser, list_parsers
-from parsers.ocr_runner import run_parser
-# from utils.validations import analyze_ocr_results, suggest_validations  # Optional for AI-based features
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-
-
-def initialize_session_state():
-    if 'parsers' not in st.session_state:
-        st.session_state['parsers'] = {}
-    if 'loaded' not in st.session_state:
-        st.session_state['loaded'] = False
-
+from github_utils import download_parsers_from_github, upload_parsers_to_github
+from parser_utils import add_new_parser, list_parsers
+from ocr_utils import run_parser
 
 def main():
     st.set_page_config(page_title="FRACTO OCR Parser", layout="wide")
@@ -61,15 +45,14 @@ def main():
         </ul>
     """, unsafe_allow_html=True)
 
+    # Initialize menu
     menu = ["List Parsers", "Run Parser", "Add Parser"]
     choice = st.sidebar.radio("Menu", menu)
 
-    initialize_session_state()
-
-    # Load parsers on first run
-    if not st.session_state['loaded']:
+    # Load parsers once when the app starts
+    if 'loaded' not in st.session_state:
         download_parsers_from_github()
-        st.session_state['loaded'] = True
+        st.session_state.loaded = True
 
     if choice == "Add Parser":
         add_new_parser()
@@ -78,13 +61,13 @@ def main():
     elif choice == "Run Parser":
         run_parser(st.session_state['parsers'])
 
+    # Sidebar actions for downloading and updating parsers
     st.sidebar.header("GitHub Actions")
     if st.sidebar.button("Download Parsers"):
         download_parsers_from_github()
 
     if st.sidebar.button("Update Parsers File"):
         upload_parsers_to_github()
-
 
 if __name__ == "__main__":
     main()
