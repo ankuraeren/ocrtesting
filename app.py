@@ -1,7 +1,11 @@
 import streamlit as st
 from github_utils import download_parsers_from_github, upload_parsers_to_github
 from parser_utils import add_new_parser, list_parsers
-from ocr_utils import run_parser
+from ocr_runner import run_parser
+
+# Initialize session state for parsers if not already initialized
+if 'parsers' not in st.session_state:
+    st.session_state['parsers'] = {}
 
 def main():
     st.set_page_config(page_title="FRACTO OCR Parser", layout="wide")
@@ -45,11 +49,10 @@ def main():
         </ul>
     """, unsafe_allow_html=True)
 
-    # Initialize menu
     menu = ["List Parsers", "Run Parser", "Add Parser"]
     choice = st.sidebar.radio("Menu", menu)
 
-    # Load parsers once when the app starts
+    # Ensure this is only called at the start to load or get the latest parsers.
     if 'loaded' not in st.session_state:
         download_parsers_from_github()
         st.session_state.loaded = True
@@ -61,7 +64,6 @@ def main():
     elif choice == "Run Parser":
         run_parser(st.session_state['parsers'])
 
-    # Sidebar actions for downloading and updating parsers
     st.sidebar.header("GitHub Actions")
     if st.sidebar.button("Download Parsers"):
         download_parsers_from_github()
