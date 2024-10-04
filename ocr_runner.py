@@ -3,6 +3,7 @@ import tempfile
 import shutil
 import streamlit as st
 from PIL import Image
+from PyPDF2 import PdfReader
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from st_aggrid import AgGrid, GridOptionsBuilder
 
@@ -57,7 +58,7 @@ def run_parser(parsers):
     st.write(f"**Parser App ID:** {parser_info['parser_app_id']}")
     st.write(f"**Extra Accuracy Required:** {'Yes' if parser_info['extra_accuracy'] else 'No'}")
 
-    image_paths = []
+    file_paths = []
     temp_dirs = []
 
     # File uploader
@@ -65,20 +66,36 @@ def run_parser(parsers):
     if uploaded_files:
         for uploaded_file in uploaded_files:
             try:
-                image = Image.open(uploaded_file)
-                st.image(image, caption=uploaded_file.name, use_column_width=True)
-                temp_dir = tempfile.mkdtemp()
-                temp_dirs.append(temp_dir)
-                image_path = os.path.join(temp_dir, uploaded_file.name)
-                image.save(image_path)
-                image_paths.append(image_path)
+                if uploaded_file.type == "application/pdf":
+                    # Handle PDF files
+                    temp_dir = tempfile.mkdtemp()
+                    temp_dirs.append(temp_dir)
+                    pdf_path = os.path.join(temp_dir, uploaded_file.name)
+
+                    with open(pdf_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+
+                    # Display PDF filename
+                    st.markdown(f"**Uploaded PDF:** {uploaded_file.name}")
+                    file_paths.append(pdf_path)
+
+                else:
+                    # Handle image files
+                    image = Image.open(uploaded_file)
+                    st.image(image, caption=uploaded_file.name, use_column_width=True)
+                    temp_dir = tempfile.mkdtemp()
+                    temp_dirs.append(temp_dir)
+                    image_path = os.path.join(temp_dir, uploaded_file.name)
+                    image.save(image_path)
+                    file_paths.append(image_path)
+
             except Exception as e:
                 st.error(f"Error processing file {uploaded_file.name}: {e}")
 
     # Run OCR button
     if st.button("Run OCR"):
-        if not image_paths:
-            st.error("Please provide at least one image.")
+        if not file_paths:
+            st.error("Please provide at least one image or PDF.")
             return
 
         headers = {
@@ -95,8 +112,8 @@ def run_parser(parsers):
         API_ENDPOINT = st.secrets["api"]["endpoint"]
 
         with st.spinner("Processing OCR..."):
-            response_extra, time_taken_extra = send_request(image_paths, headers, form_data, True, API_ENDPOINT)
-            response_no_extra, time_taken_no_extra = send_request(image_paths, headers, form_data, False, API_ENDPOINT)
+            response_extra, time_taken_extra = send_request(file_paths, headers, form_data, True, API_ENDPOINT)
+            response_no_extra, time_taken_no_extra = send_request(file_paths, headers, form_data, False, API_ENDPOINT)
 
         # Cleanup temporary directories
         for temp_dir in temp_dirs:
