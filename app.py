@@ -7,41 +7,46 @@ from ocr_runner import run_parser
 if 'parsers' not in st.session_state:
     st.session_state['parsers'] = {}
 
-
 def main():
-    # Other logic here
-
+    # Set page config
     st.set_page_config(page_title="FRACTO OCR Parser", layout="wide")
 
+    # Add custom CSS for radio buttons
     st.markdown("""
         <style>
-        .stButton>button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            font-size: 16px;
+        .stRadio [role=radiogroup] {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        div[role='radiogroup'] label div[data-testid='stMarkdownContainer'] {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFFFFF;
+        }
+        div[role='radiogroup'] label {
+            background-color: #2B2B2B;
+            padding: 10px 15px;
+            border-radius: 12px;
+            border: 1px solid #3B3B3B;
             cursor: pointer;
-            border-radius: 8px;
         }
-        .stButton>button:hover {
-            background-color: #45a049;
+        div[role='radiogroup'] label:hover {
+            background-color: #474747;
         }
-        .sidebar .sidebar-content {
-            background-color: #f8f9fa;
-            padding-top: 20px;
-            height: 100%;
+        div[role='radiogroup'] input[type='radio']:checked + label {
+            background-color: #FF5F5F;
+            border-color: #FF5F5F;
         }
-        .sidebar .sidebar-content h2 {
-            color: #333;
-        }
-        .sidebar .sidebar-content p {
-            color: #555;
+        div[role='radiogroup'] input[type='radio']:checked + label div[data-testid='stMarkdownContainer'] {
+            color: #FFFFFF;
         }
         </style>
     """, unsafe_allow_html=True)
 
+    # App title and sidebar options
     st.title("📄 FRACTO OCR Parser Web App")
+    
     st.sidebar.header("Navigation")
     st.sidebar.markdown("""
         <p>This app provides functionalities for:</p>
@@ -52,6 +57,7 @@ def main():
         </ul>
     """, unsafe_allow_html=True)
 
+    # Radio button menu
     menu = ["List Parsers", "Run Parser", "Add Parser"]
     choice = st.sidebar.radio("Menu", menu)
 
@@ -60,6 +66,7 @@ def main():
         download_parsers_from_github()  # This will also call load_parsers internally
         st.session_state.loaded = True
 
+    # Menu options
     if choice == "Add Parser":
         add_new_parser()
     elif choice == "List Parsers":
