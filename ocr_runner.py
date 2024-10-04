@@ -5,6 +5,34 @@ import streamlit as st
 from PIL import Image
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from st_aggrid import AgGrid, GridOptionsBuilder
+import requests
+
+# Access ChatGPT-4O API key from Streamlit secrets
+CHATGPT_API_KEY = st.secrets["api"]["chatgpt_api_key"]
+
+# Function to call ChatGPT-4O and get validation prompt
+def get_validation_suggestion(mismatch_field, image_context):
+    # Example payload for API request to ChatGPT-4O
+    payload = {
+        "field": mismatch_field,
+        "image_context": image_context,
+        "max_characters": 50  # We are limiting the response to 50 characters
+    }
+
+    # Call to ChatGPT-4O API
+    API_URL = "https://your-chatgpt-4o-api-url.com/generate-prompt"  # Replace with your actual API
+
+    headers = {
+        'Authorization': f'Bearer {CHATGPT_API_KEY}',  # Add API key in Authorization header
+        'Content-Type': 'application/json'
+    }
+
+    response = requests.post(API_URL, headers=headers, json=payload)
+
+    if response.status_code == 200:
+        return response.json().get('suggestion', 'No suggestion provided')
+    else:
+        return "API Error: Unable to fetch suggestion"
 
 # Main OCR parser function
 def run_parser(parsers):
@@ -140,9 +168,14 @@ def run_parser(parsers):
             if success_extra and success_no_extra:
                 comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
 
-                # Display mismatched fields in a table
-                st.subheader("Mismatched Fields")
+                # Display mismatched fields in a table and get suggestions
+                st.subheader("Mismatched Fields with Suggestions")
                 mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
+
+                # Get suggestions from ChatGPT-4O for each mismatched field
+                mismatch_df['Suggestions'] = mismatch_df.apply(lambda row: get_validation_suggestion(row['Field'], image_paths), axis=1)
+
+                # Display the table with suggestions
                 st.dataframe(mismatch_df)
 
                 # Display the comparison table
