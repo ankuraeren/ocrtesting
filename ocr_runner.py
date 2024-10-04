@@ -26,14 +26,21 @@ def handle_file_upload(uploaded_files):
 
         # Handling PDF files
         elif file_type == "application/pdf":
-            pdf_reader = fitz.open(uploaded_file)  # Use 'fitz' instead of 'PyMuPDF'
+            # Save uploaded PDF as a temporary file
+            pdf_path = os.path.join(temp_dir, uploaded_file.name)
+            with open(pdf_path, 'wb') as f:
+                f.write(uploaded_file.read())  # Write the uploaded file to disk
+            
+            # Open the saved PDF using PyMuPDF
+            pdf_reader = fitz.open(pdf_path)  # Now, fitz can read it from a valid path
             for page_num in range(pdf_reader.page_count):
                 page = pdf_reader.load_page(page_num)
-                image = page.get_pixmap()
+                pix = page.get_pixmap()
                 image_path = os.path.join(temp_dir, f"page_{page_num + 1}.png")
-                image.save(image_path)
+                pix.save(image_path)
                 image_paths.append(image_path)
                 st.image(image_path, caption=f"Page {page_num + 1} from {uploaded_file.name}", use_column_width=True)
+
         else:
             st.error(f"Unsupported file type: {file_type}")
 
