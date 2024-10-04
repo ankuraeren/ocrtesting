@@ -76,11 +76,20 @@ def run_parser(parsers):
                     with open(pdf_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
 
-                    # Display PDF using iframe
+                    # Display PDF using an embedded viewer
                     with open(pdf_path, "rb") as f:
-                        base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-                        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800px" type="application/pdf"></iframe>'
+                        pdf_data = f.read()
+                        b64_pdf = base64.b64encode(pdf_data).decode('utf-8')
+                        pdf_display = f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="800px"></iframe>'
                         st.markdown(pdf_display, unsafe_allow_html=True)
+
+                    # Provide a download button for the PDF
+                    st.download_button(
+                        label="Download PDF",
+                        data=pdf_data,
+                        file_name=uploaded_file.name,
+                        mime="application/pdf"
+                    )
 
                     file_paths.append(pdf_path)
 
