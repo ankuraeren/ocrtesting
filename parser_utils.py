@@ -1,16 +1,14 @@
-import requests
-import streamlit as st
-from PIL import Image
 import os
-import tempfile
-import shutil
-import time
-import logging
 import json
+import streamlit as st
+import logging
+import tempfile
 
+# Define local parsers file path using a temporary directory
 LOCAL_PARSERS_FILE = os.path.join(tempfile.gettempdir(), 'parsers.json')
 
 def load_parsers():
+    """Loads parsers from the local JSON file and stores them in session state."""
     if os.path.exists(LOCAL_PARSERS_FILE):
         try:
             with open(LOCAL_PARSERS_FILE, 'r') as f:
@@ -22,12 +20,10 @@ def load_parsers():
         except Exception as e:
             st.error(f"Unexpected error while loading `parsers.json`: {e}")
             logging.error(f"Unexpected error while loading `parsers.json`: {e}")
-        else:
-            st.error("`parsers.json` does not exist locally. Please download it from GitHub.")
-            logging.error("`parsers.json` does not exist locally.")
-        else:
-            st.error("`parsers.json` does not exist locally. Please download it from GitHub.")
-            logging.error("`parsers.json` does not exist locally.")
+    else:
+        st.error("`parsers.json` does not exist locally. Please download it from GitHub.")
+        logging.error("`parsers.json` does not exist locally.")
+
 
 
 def save_parsers():
