@@ -6,6 +6,25 @@ from PIL import Image
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df
 from st_aggrid import AgGrid, GridOptionsBuilder
 
+# Function to generate a DataFrame with mismatched fields
+def generate_mismatch_df(json1, json2, comparison_results):
+    """
+    Generate a DataFrame showing only the mismatched fields between the two JSONs.
+    """
+    flat_json1, order1 = flatten_json(json1)
+    flat_json2, _ = flatten_json(json2)
+
+    data = []
+    for key in order1:
+        val1 = flat_json1.get(key, "N/A")
+        val2 = flat_json2.get(key, "N/A")
+        if comparison_results[key] == "✘":  # Only include mismatched fields
+            data.append([key, val1, val2])
+
+    # Create a DataFrame with only the mismatched fields
+    df = pd.DataFrame(data, columns=['Field', 'Result with Extra Accuracy', 'Result without Extra Accuracy'])
+    return df
+
 # Main OCR parser function
 def run_parser(parsers):
     st.subheader("Run OCR Parser")
@@ -13,7 +32,7 @@ def run_parser(parsers):
         st.info("No parsers available. Please add a parser first.")
         return
 
-    # Add custom CSS for horizontal, scrollable radio buttons
+    # Custom CSS for horizontal scrollable radio buttons
     st.markdown("""
         <style>
         .stRadio [role=radiogroup] {
@@ -48,7 +67,7 @@ def run_parser(parsers):
         </style>
     """, unsafe_allow_html=True)
 
-    # Convert parser selection into horizontal scrollable radio buttons
+    # Parser selection
     parser_names = list(parsers.keys())
     selected_parser = st.radio("Select Parser", parser_names)
     parser_info = parsers[selected_parser]
@@ -140,8 +159,16 @@ def run_parser(parsers):
             st.subheader("Comparison JSON")
             if success_extra and success_no_extra:
                 comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
-                st.expander("Comparison JSON").json(comparison_results)
                 
+                # Display mismatched fields in a table (below images and above JSON)
+                st.subheader("Mismatched Fields")
+                mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
+                st.dataframe(mismatch_df)
+
+                # Display the full comparison JSON
+                st.expander("Comparison JSON").json(comparison_results)
+
+                # Display the comparison table
                 st.subheader("Comparison Table")
                 comparison_table = generate_comparison_df(response_json_extra, response_json_no_extra, comparison_results)
                 gb = GridOptionsBuilder.from_dataframe(comparison_table)
