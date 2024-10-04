@@ -13,12 +13,13 @@ def run_parser(parsers):
         st.info("No parsers available. Please add a parser first.")
         return
 
-    # Add the same custom CSS for radio buttons as used in the sidebar
+    # Add custom CSS for horizontal, scrollable radio buttons
     st.markdown("""
         <style>
         .stRadio [role=radiogroup] {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
+            overflow-x: auto;
             gap: 10px;
         }
         div[role='radiogroup'] label div[data-testid='stMarkdownContainer'] {
@@ -32,6 +33,7 @@ def run_parser(parsers):
             border-radius: 12px;
             border: 1px solid #3B3B3B;
             cursor: pointer;
+            white-space: nowrap;
         }
         div[role='radiogroup'] label:hover {
             background-color: #474747;
@@ -46,7 +48,7 @@ def run_parser(parsers):
         </style>
     """, unsafe_allow_html=True)
 
-    # Convert parser selection into radio buttons with the custom style
+    # Convert parser selection into horizontal scrollable radio buttons
     parser_names = list(parsers.keys())
     selected_parser = st.radio("Select Parser", parser_names)
     parser_info = parsers[selected_parser]
