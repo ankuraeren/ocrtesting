@@ -35,7 +35,7 @@ def run_parser(parsers):
         st.info("No parsers available. Please add a parser first.")
         return
 
-    # Custom CSS for horizontal scrollable radio buttons
+    # Add custom CSS for horizontal, scrollable radio buttons
     st.markdown("""
         <style>
         .stRadio [role=radiogroup] {
@@ -70,7 +70,7 @@ def run_parser(parsers):
         </style>
     """, unsafe_allow_html=True)
 
-    # Parser selection
+    # Convert parser selection into horizontal scrollable radio buttons
     parser_names = list(parsers.keys())
     selected_parser = st.radio("Select Parser", parser_names)
     parser_info = parsers[selected_parser]
@@ -131,7 +131,16 @@ def run_parser(parsers):
             success_extra = response_extra.status_code == 200
             success_no_extra = response_no_extra.status_code == 200
 
-            # Display results in two columns
+            # Generate comparison results before displaying anything
+            comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
+            mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
+
+            # Display the mismatch fields first (above the results)
+            if not mismatch_df.empty:
+                st.subheader("Mismatched Fields")
+                st.dataframe(mismatch_df)
+
+            # Display results in two columns (this comes after the mismatch fields table)
             col1, col2 = st.columns(2)
 
             if success_extra:
@@ -157,28 +166,3 @@ def run_parser(parsers):
             else:
                 with col2:
                     st.error(f"Request without Extra Accuracy failed. Status code: {response_no_extra.status_code}")
-
-            # Generate comparison results
-            st.subheader("Comparison JSON")
-            if success_extra and success_no_extra:
-                comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
-                
-                # Display mismatched fields in a table (below images and above JSON)
-                st.subheader("Mismatched Fields")
-                mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
-                st.dataframe(mismatch_df)
-
-                # Display the full comparison JSON
-                st.expander("Comparison JSON").json(comparison_results)
-
-                # Display the comparison table
-                st.subheader("Comparison Table")
-                comparison_table = generate_comparison_df(response_json_extra, response_json_no_extra, comparison_results)
-                gb = GridOptionsBuilder.from_dataframe(comparison_table)
-                gb.configure_pagination(paginationAutoPageSize=True)
-                gb.configure_side_bar()
-                gb.configure_selection('single')
-                grid_options = gb.build()
-                AgGrid(comparison_table, gridOptions=grid_options, height=500, theme='streamlit', enable_enterprise_modules=True)
-            else:
-                st.error("Comparison failed. One or both requests were unsuccessful.")
