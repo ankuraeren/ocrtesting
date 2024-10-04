@@ -93,3 +93,20 @@ def get_current_sha():
     except Exception as e:
         st.error(f"Error fetching SHA: {e}")
         return None
+
+def are_fields_equal(field1, field2):
+    """Custom logic to determine if two fields are equal, treating 'N/A', 'null', and empty fields as equal."""
+    normalized_field1 = str(field1).strip().lower() if field1 is not None else ""
+    normalized_field2 = str(field2).strip().lower() if field2 is not None else ""
+    return normalized_field1 in ["", "n/a", "null"] and normalized_field2 in ["", "n/a", "null"] or normalized_field1 == normalized_field2
+
+# Example usage in comparison logic
+# Assume we are comparing two OCR outputs (response1, response2) for mismatches
+def compare_ocr_outputs(response1, response2):
+    mismatches = []
+    for key in response1.keys() | response2.keys():
+        value1 = response1.get(key, "")
+        value2 = response2.get(key, "")
+        if not are_fields_equal(value1, value2):
+            mismatches.append({"field": key, "value1": value1, "value2": value2})
+    return mismatches
