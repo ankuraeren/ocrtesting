@@ -5,50 +5,6 @@ import streamlit as st
 from PIL import Image
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from st_aggrid import AgGrid, GridOptionsBuilder
-import requests
-import logging
-
-# Access ChatGPT-4O API key from Streamlit secrets
-CHATGPT_API_KEY = st.secrets["api"]["chatgpt_api_key"]
-
-
-# Function to get validation suggestion using OpenAI GPT-4O API
-import logging
-
-def get_validation_suggestion(mismatch_field, image_context):
-    prompt = f"Provide a validation suggestion for the mismatched field '{mismatch_field}' based on the following image context. " \
-             f"The suggestion should be no more than 50 characters. Image context: {image_context}"
-
-    API_URL = "https://api.openai.com/v1/chat/completions"
-    MODEL = "gpt-4o-2024-08-06"
-    CHATGPT_API_KEY = st.secrets["chatgpt"]["api_key"]
-
-    payload = {
-        "model": MODEL,
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant providing suggestions for validation."},
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 50,
-        "temperature": 0.7
-    }
-
-    headers = {
-        'Authorization': f'Bearer {CHATGPT_API_KEY}',
-        'Content-Type': 'application/json'
-    }
-
-    try:
-        logging.info(f"Sending request to {API_URL} with payload: {payload}")
-        response = requests.post(API_URL, headers=headers, json=payload)
-        response.raise_for_status()  # Will raise an HTTPError for bad responses
-        response_json = response.json()
-        suggestion = response_json['choices'][0]['message']['content']
-        return suggestion
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Request failed: {e}")
-        return f"Connection Error: {e}"
-
 
 # Main OCR parser function
 def run_parser(parsers):
@@ -184,14 +140,9 @@ def run_parser(parsers):
             if success_extra and success_no_extra:
                 comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
 
-                # Display mismatched fields in a table and get suggestions
-                st.subheader("Mismatched Fields with Suggestions")
+                # Display mismatched fields in a table
+                st.subheader("Mismatched Fields")
                 mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
-
-                # Get suggestions from ChatGPT-4O for each mismatched field
-                mismatch_df['Suggestions'] = mismatch_df.apply(lambda row: get_validation_suggestion(row['Field'], image_paths), axis=1)
-
-                # Display the table with suggestions
                 st.dataframe(mismatch_df)
 
                 # Display the comparison table
