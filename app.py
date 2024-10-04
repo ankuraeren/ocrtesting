@@ -7,6 +7,7 @@ from ocr_runner import run_parser
 if 'parsers' not in st.session_state:
     st.session_state['parsers'] = {}
 
+
 def main():
     # Other logic here
 
