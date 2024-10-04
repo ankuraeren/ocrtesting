@@ -7,7 +7,7 @@ import pandas as pd
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df
 from st_aggrid import AgGrid, GridOptionsBuilder
 
-# Function to generate a DataFrame with mismatched fields
+# Function to generate a DataFrame with only mismatched fields
 def generate_mismatch_df(json1, json2, comparison_results):
     """
     Generate a DataFrame showing only the mismatched fields between the two JSONs.
@@ -33,7 +33,7 @@ def run_parser(parsers):
         st.info("No parsers available. Please add a parser first.")
         return
 
-    # Add custom CSS for horizontal, scrollable radio buttons
+    # Custom CSS for horizontal scrollable radio buttons
     st.markdown("""
         <style>
         .stRadio [role=radiogroup] {
@@ -68,7 +68,7 @@ def run_parser(parsers):
         </style>
     """, unsafe_allow_html=True)
 
-    # Convert parser selection into horizontal scrollable radio buttons
+    # Parser selection
     parser_names = list(parsers.keys())
     selected_parser = st.radio("Select Parser", parser_names)
     parser_info = parsers[selected_parser]
