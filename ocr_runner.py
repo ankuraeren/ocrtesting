@@ -5,52 +5,6 @@ import streamlit as st
 from PIL import Image
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df
 from st_aggrid import AgGrid, GridOptionsBuilder
-from ocr_utils import flatten_json
-
-
-# Function to generate a DataFrame with mismatched fields
-def generate_mismatch_df(json1, json2, comparison_results):
-    """
-    Generate a DataFrame showing only the mismatched fields between the two JSONs.
-    """
-    flat_json1, order1 = flatten_json(json1)
-    flat_json2, _ = flatten_json(json2)
-
-    data = []
-    for key in order1:
-        val1 = flat_json1.get(key, "N/A")
-        val2 = flat_json2.get(key, "N/A")
-        if comparison_results[key] == "✘":  # Only include mismatched fields
-            data.append([key, val1, val2])
-
-    # Create a DataFrame with only the mismatched fields
-    df = pd.DataFrame(data, columns=['Field', 'Result with Extra Accuracy', 'Result without Extra Accuracy'])
-    return df
-
-# Function to flatten nested JSON
-def flatten_json(y):
-    """
-    This function flattens a nested JSON object into a dictionary.
-    """
-    out = {}
-    order = []
-
-    def flatten(x, name=''):
-        if isinstance(x, dict):
-            for a in x:
-                flatten(x[a], name + a + '.')
-        elif isinstance(x, list):
-            i = 0
-            for a in x:
-                flatten(a, name + str(i) + '.')
-                i += 1
-        else:
-            out[name[:-1]] = x
-            order.append(name[:-1])
-    flatten(y)
-    return out, order
-
-
 
 # Main OCR parser function
 def run_parser(parsers):
@@ -59,7 +13,7 @@ def run_parser(parsers):
         st.info("No parsers available. Please add a parser first.")
         return
 
-    # Custom CSS for horizontal scrollable radio buttons
+    # Add custom CSS for horizontal, scrollable radio buttons
     st.markdown("""
         <style>
         .stRadio [role=radiogroup] {
@@ -94,7 +48,7 @@ def run_parser(parsers):
         </style>
     """, unsafe_allow_html=True)
 
-    # Parser selection
+    # Convert parser selection into horizontal scrollable radio buttons
     parser_names = list(parsers.keys())
     selected_parser = st.radio("Select Parser", parser_names)
     parser_info = parsers[selected_parser]
@@ -186,16 +140,8 @@ def run_parser(parsers):
             st.subheader("Comparison JSON")
             if success_extra and success_no_extra:
                 comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
-                
-                # Display mismatched fields in a table (below images and above JSON)
-                st.subheader("Mismatched Fields")
-                mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
-                st.dataframe(mismatch_df)
-
-                # Display the full comparison JSON
                 st.expander("Comparison JSON").json(comparison_results)
-
-                # Display the comparison table
+                
                 st.subheader("Comparison Table")
                 comparison_table = generate_comparison_df(response_json_extra, response_json_no_extra, comparison_results)
                 gb = GridOptionsBuilder.from_dataframe(comparison_table)
