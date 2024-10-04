@@ -6,6 +6,7 @@ from PIL import Image
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from st_aggrid import AgGrid, GridOptionsBuilder
 import base64
+import json
 
 # Main OCR parser function
 def run_parser(parsers):
@@ -78,7 +79,7 @@ def run_parser(parsers):
                     # Display PDF using iframe
                     with open(pdf_path, "rb") as f:
                         base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-                        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="1000" type="application/pdf"></iframe>'
+                        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800px" type="application/pdf"></iframe>'
                         st.markdown(pdf_display, unsafe_allow_html=True)
 
                     file_paths.append(pdf_path)
