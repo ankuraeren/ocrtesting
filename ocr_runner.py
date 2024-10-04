@@ -1,6 +1,6 @@
 import streamlit as st
 from PIL import Image
-import PyMuPDF  # You need to install this library for handling PDFs
+import fitz  # Correct import for PyMuPDF
 import tempfile
 import os
 import shutil
