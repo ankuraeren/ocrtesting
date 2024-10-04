@@ -7,22 +7,33 @@ import tempfile
 # Define local parsers file path using a temporary directory
 LOCAL_PARSERS_FILE = os.path.join(tempfile.gettempdir(), 'parsers.json')
 
-def load_parsers():
-    """Loads parsers from the local JSON file and stores them in session state."""
-    if os.path.exists(LOCAL_PARSERS_FILE):
-        try:
-            with open(LOCAL_PARSERS_FILE, 'r') as f:
-                st.session_state['parsers'] = json.load(f)
-            logging.info("`parsers.json` loaded into session state.")
-        except json.JSONDecodeError:
-            st.error("`parsers.json` is corrupted or not in valid JSON format.")
-            logging.error("`parsers.json` is corrupted or not in valid JSON format.")
-        except Exception as e:
-            st.error(f"Unexpected error while loading `parsers.json`: {e}")
-            logging.error(f"Unexpected error while loading `parsers.json`: {e}")
-    else:
-        st.error("`parsers.json` does not exist locally. Please download it from GitHub.")
-        logging.error("`parsers.json` does not exist locally.")
+import os
+import base64
+import requests
+import tempfile
+import logging
+import streamlit as st
+from parser_utils import load_parsers  # Ensure this import is present
+
+LOCAL_PARSERS_FILE = os.path.join(tempfile.gettempdir(), 'parsers.json')
+
+def download_parsers_from_github():
+    headers = {'Authorization': f'token {st.secrets["github"]["access_token"]}'}
+    try:
+        response = requests.get(GITHUB_API_URL, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        content = response.json().get('content')
+        if content:
+            with open(LOCAL_PARSERS_FILE, 'wb') as f:
+                f.write(base64.b64decode(content))
+            load_parsers()  # Call the function after downloading
+            st.success("`parsers.json` downloaded successfully from GitHub.")
+        else:
+            st.error("`parsers.json` content is empty.")
+    except Exception as e:
+        st.error(f"Error: {e}")
+
 
 
 
