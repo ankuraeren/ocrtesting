@@ -1,77 +1,95 @@
-import requests
-import streamlit as st
-from PIL import Image
 import os
-import tempfile
-import shutil
+import json
+import requests
 import time
-import logging
+import pandas as pd
+import streamlit as st
 
-# Handles running the OCR parser on uploaded images
-def run_parser(parsers):
-    st.subheader("Run OCR Parser")
-    if not parsers:
-        st.info("No parsers available. Please add a parser first.")
-        return
+# Function to flatten nested JSON
+def flatten_json(y):
+    out = {}
+    order = []
 
-    parser_names = list(parsers.keys())
-    selected_parser = st.selectbox("Select Parser", parser_names)
-    parser_info = parsers[selected_parser]
+    def flatten(x, name=''):
+        if isinstance(x, dict):
+            for a in x:
+                flatten(x[a], name + a + '.')
+        elif isinstance(x, list):
+            i = 0
+            for a in x:
+                flatten(a, name + str(i) + '.')
+                i += 1
+        else:
+            out[name[:-1]] = x
+            order.append(name[:-1])
+    flatten(y)
+    return out, order
 
-    input_method = st.radio("Input Method", ("Upload Image", "Image URL"))
+# Function to generate comparison results
+def generate_comparison_results(json1, json2):
+    flat_json1, order1 = flatten_json(json1)
+    flat_json2, _ = flatten_json(json2)
 
-    image_paths = []
-    images = []
-    temp_dirs = []
+    comparison_results = {}
+    for key in order1:
+        val1 = flat_json1.get(key, "N/A")
+        val2 = flat_json2.get(key, "N/A")
+        match = (val1 == val2)
+        comparison_results[key] = "✔" if match else "✘"
+    return comparison_results
 
-    # Handle image upload or URL input
-    if input_method == "Upload Image":
-        uploaded_files = st.file_uploader("Choose image...", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
-        if uploaded_files:
-            for uploaded_file in uploaded_files:
-                image = Image.open(uploaded_file)
-                images.append(image)
-                temp_dir = tempfile.mkdtemp()
-                temp_dirs.append(temp_dir)
-                image_path = os.path.join(temp_dir, uploaded_file.name)
-                image.save(image_path)
-                image_paths.append(image_path)
-    else:
-        image_url = st.text_input("Image URL")
-        if image_url:
-            response = requests.get(image_url, stream=True)
-            if response.status_code == 200:
-                image = Image.open(response.raw)
-                images.append(image)
-                temp_dir = tempfile.mkdtemp()
-                temp_dirs.append(temp_dir)
-                image_filename = os.path.basename(image_url)
-                image_path = os.path.join(temp_dir, image_filename)
-                image.save(image_path)
-                image_paths.append(image_path)
-            else:
-                st.error("Error fetching image from URL.")
+# Function to generate comparison DataFrame
+def generate_comparison_df(json1, json2, comparison_results):
+    flat_json1, order1 = flatten_json(json1)
+    flat_json2, _ = flatten_json(json2)
 
-    if st.button("Run OCR"):
-        if not image_paths:
-            st.error("Please upload or enter an image URL.")
-            return
+    data = []
+    for key in order1:
+        val1 = flat_json1.get(key, "N/A")
+        val2 = flat_json2.get(key, "N/A")
+        match = comparison_results[key]
+        data.append([key, val1, val2, match])
 
-        headers = {'x-api-key': parser_info['api_key']}
-        data = {'parserApp': parser_info['parser_app_id']}
+    df = pd.DataFrame(data, columns=['Attribute', 'Result with Extra Accuracy', 'Result without Extra Accuracy', 'Comparison'])
+    return df
 
-        # Send OCR request
-        with st.spinner("Running OCR..."):
-            files = [('file', (os.path.basename(path), open(path, 'rb'), 'image/jpeg')) for path in image_paths]
-            try:
-                response = requests.post(st.secrets["api"]["endpoint"], headers=headers, data=data, files=files)
-                if response.status_code == 200:
-                    st.json(response.json())
-                else:
-                    st.error(f"OCR failed with status code {response.status_code}")
-            except Exception as e:
-                st.error(f"Error running OCR: {e}")
+# Function to send OCR request
+def send_request(image_paths, headers, form_data, extra_accuracy, API_ENDPOINT):
+    local_headers = headers.copy()
+    local_form_data = form_data.copy()
 
-        # Cleanup temporary files
-        for temp_dir in temp_dirs:
-            shutil.rmtree(temp_dir)
+    if extra_accuracy:
+        local_form_data['extra_accuracy'] = 'true'
+
+    # List of files to upload
+    files = []
+    for image_path in image_paths:
+        _, file_ext = os.path.splitext(image_path.lower())
+        mime_types = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.bmp': 'image/bmp',
+            '.gif': 'image/gif',
+            '.tiff': 'image/tiff',
+            '.pdf': 'application/pdf'
+        }
+        mime_type = mime_types.get(file_ext, 'application/octet-stream')
+        try:
+            files.append(('file', (os.path.basename(image_path), open(image_path, 'rb'), mime_type)))
+        except Exception as e:
+            st.error(f"Error opening file {image_path}: {e}")
+            return None, 0
+
+    try:
+        start_time = time.time()
+        response = requests.post(API_ENDPOINT, headers=local_headers, data=local_form_data, files=files if files else None, timeout=120)
+        time_taken = time.time() - start_time
+        return response, time_taken
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error in OCR request: {e}")
+        return None, 0
+    finally:
+        # Cleanup files
+        for _, file_tuple in files:
+            file_tuple[1].close()
