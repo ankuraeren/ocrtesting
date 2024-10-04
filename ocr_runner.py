@@ -3,7 +3,7 @@ import tempfile
 import shutil
 import streamlit as st
 from PIL import Image
-from ocr_util import generate_comparison_results, generate_comparison_df, generate_mismatch_df, flatten_json
+from ocr_utils import generate_comparison_results, generate_comparison_df, generate_mismatch_df, flatten_json
 from st_aggrid import AgGrid, GridOptionsBuilder
 
 # Main OCR parser function
