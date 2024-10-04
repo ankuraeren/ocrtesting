@@ -9,21 +9,48 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 # Main OCR parser function with button-based parser selection
 def run_parser(parsers):
     st.subheader("Run OCR Parser")
-    
+
     if not parsers:
         st.info("No parsers available. Please add a parser first.")
         return
 
-    # Create button-based parser selection
+    # Create button-based parser selection with flexbox styling
+    st.markdown("""
+        <style>
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .button-container button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .button-container button:hover {
+            background-color: #45a049;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.markdown("### Select a Parser")
     selected_parser = None
-    
-    cols = st.columns(len(parsers))  # Create a column for each parser button
 
-    for idx, parser_name in enumerate(parsers.keys()):
-        if cols[idx].button(parser_name):
+    # Container for the parser buttons
+    st.markdown('<div class="button-container">', unsafe_allow_html=True)
+    cols = st.columns(len(parsers))  # Create columns dynamically
+
+    for parser_name in parsers.keys():
+        if st.button(parser_name):
             selected_parser = parser_name
-    
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
     if selected_parser:
         parser_info = parsers[selected_parser]
 
@@ -115,7 +142,7 @@ def run_parser(parsers):
                 if success_extra and success_no_extra:
                     comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
                     st.expander("Comparison JSON").json(comparison_results)
-                    
+
                     st.subheader("Comparison Table")
                     comparison_table = generate_comparison_df(response_json_extra, response_json_no_extra, comparison_results)
                     gb = GridOptionsBuilder.from_dataframe(comparison_table)
