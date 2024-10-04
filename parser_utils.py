@@ -22,12 +22,12 @@ def load_parsers():
         except Exception as e:
             st.error(f"Unexpected error while loading `parsers.json`: {e}")
             logging.error(f"Unexpected error while loading `parsers.json`: {e}")
-    else:
-        st.error("`parsers.json` does not exist locally. Please download it from GitHub.")
-        logging.error("`parsers.json` does not exist locally.")
-    else:
-        st.error("`parsers.json` does not exist locally. Please download it from GitHub.")
-        logging.error("`parsers.json` does not exist locally.")
+        else:
+            st.error("`parsers.json` does not exist locally. Please download it from GitHub.")
+            logging.error("`parsers.json` does not exist locally.")
+        else:
+            st.error("`parsers.json` does not exist locally. Please download it from GitHub.")
+            logging.error("`parsers.json` does not exist locally.")
 
 
 def save_parsers():
