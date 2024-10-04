@@ -52,9 +52,9 @@ def main():
     menu = ["List Parsers", "Run Parser", "Add Parser"]
     choice = st.sidebar.radio("Menu", menu)
 
-    # Ensure this is only called at the start to load or get the latest parsers.
+    # Ensure parsers are loaded once when the app starts
     if 'loaded' not in st.session_state:
-        download_parsers_from_github()
+        download_parsers_from_github()  # This will also call load_parsers internally
         st.session_state.loaded = True
 
     if choice == "Add Parser":
