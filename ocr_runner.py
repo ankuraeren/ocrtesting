@@ -4,6 +4,7 @@ import fitz  # Correct import for PyMuPDF
 import tempfile
 import os
 import shutil
+import requests
 
 # Function to handle image and PDF upload
 def handle_file_upload(uploaded_files):
@@ -47,6 +48,37 @@ def handle_file_upload(uploaded_files):
     return image_paths, temp_dirs
 
 
+# Function to send images to OCR API
+def send_to_ocr_api(image_paths, parser_info):
+    """Send the images to the OCR API and return the result."""
+    headers = {
+        'x-api-key': parser_info['api_key'],  # Replace with correct API key header
+    }
+
+    form_data = {
+        'parserApp': parser_info['parser_app_id'],
+        'user_ip': '127.0.0.1',
+        'location': 'delhi',
+        'user_agent': 'Dummy-device-testing11',
+    }
+
+    files = []
+    for image_path in image_paths:
+        with open(image_path, 'rb') as file:
+            file_extension = os.path.splitext(image_path)[1].lower()
+            mime_type = f"image/{file_extension[1:]}" if file_extension != ".pdf" else "application/pdf"
+            files.append(('file', (os.path.basename(image_path), file, mime_type)))
+
+    try:
+        response = requests.post("YOUR_OCR_API_ENDPOINT", headers=headers, data=form_data, files=files)
+        response.raise_for_status()  # Raise exception for any errors
+        return response.json()  # Assuming the API returns JSON response
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error in OCR request: {e}")
+        return None
+
+
 def run_parser(parsers):
     """Run the selected OCR parser."""
     st.subheader("Run OCR Parser")
@@ -83,15 +115,22 @@ def run_parser(parsers):
         # Handle URL input (if needed)
         image_urls = st.text_area("Enter Image URLs (one per line)")
         # Process URLs here...
-    
+
     if st.button("Run OCR"):
         if not image_paths:
             st.error("Please provide at least one image or PDF.")
             return
         
-        # Proceed with OCR processing (e.g., send images to OCR API)
-        # ...
+        # Proceed with OCR processing
+        with st.spinner("Processing OCR..."):
+            ocr_response = send_to_ocr_api(image_paths, parser_info)
+
+        # Display OCR result
+        if ocr_response:
+            st.success("OCR processing complete!")
+            st.json(ocr_response)  # Display OCR result as JSON
 
         # Cleanup temporary directories
         for temp_dir in temp_dirs:
             shutil.rmtree(temp_dir)
+
