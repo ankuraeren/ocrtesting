@@ -3,7 +3,7 @@ import tempfile
 import shutil
 import streamlit as st
 from PIL import Image
-from ocr_utils import generate_comparison_results, generate_comparison_df, generate_mismatch_df, flatten_json
+from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from st_aggrid import AgGrid, GridOptionsBuilder
 
 # Main OCR parser function
@@ -13,7 +13,7 @@ def run_parser(parsers):
         st.info("No parsers available. Please add a parser first.")
         return
 
-    # Custom CSS for horizontal scrollable radio buttons
+    # Horizontal scrollable radio buttons for parser selection
     st.markdown("""
         <style>
         .stRadio [role=radiogroup] {
@@ -48,7 +48,7 @@ def run_parser(parsers):
         </style>
     """, unsafe_allow_html=True)
 
-    # Parser selection
+    # Convert parser selection into horizontal scrollable radio buttons
     parser_names = list(parsers.keys())
     selected_parser = st.radio("Select Parser", parser_names)
     parser_info = parsers[selected_parser]
@@ -141,7 +141,7 @@ def run_parser(parsers):
             if success_extra and success_no_extra:
                 comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
 
-                # Display mismatched fields in a table (below images and above JSON)
+                # Display mismatched fields in a table
                 st.subheader("Mismatched Fields")
                 mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
                 st.dataframe(mismatch_df)
