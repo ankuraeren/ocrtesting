@@ -6,6 +6,8 @@ from PIL import Image
 import pandas as pd
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df
 from st_aggrid import AgGrid, GridOptionsBuilder
+from ocr_utils import flatten_json
+
 
 # Function to generate a DataFrame with only mismatched fields
 def generate_mismatch_df(json1, json2, comparison_results):
