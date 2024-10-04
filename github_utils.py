@@ -1,3 +1,4 @@
+import tempfile
 import requests
 import os
 import base64
