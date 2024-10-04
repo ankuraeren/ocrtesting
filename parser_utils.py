@@ -1,18 +1,27 @@
-import os
-import tempfile
-import streamlit as st
 import json
+import os
+import streamlit as st
 import logging
 
 LOCAL_PARSERS_FILE = os.path.join(tempfile.gettempdir(), 'parsers.json')
 
 def load_parsers():
+    """Loads parsers from the local file."""
     if os.path.exists(LOCAL_PARSERS_FILE):
         try:
             with open(LOCAL_PARSERS_FILE, 'r') as f:
                 st.session_state['parsers'] = json.load(f)
+            logging.info("`parsers.json` loaded into session state.")
+        except json.JSONDecodeError:
+            st.error("`parsers.json` is corrupted or not in valid JSON format.")
+            logging.error("`parsers.json` is corrupted or not in valid JSON format.")
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Unexpected error while loading `parsers.json`: {e}")
+            logging.error(f"Unexpected error while loading `parsers.json`: {e}")
+    else:
+        st.error("`parsers.json` does not exist locally. Please download it from GitHub.")
+        logging.error("`parsers.json` does not exist locally.")
+
 
 def save_parsers():
     try:
