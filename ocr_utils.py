@@ -38,6 +38,44 @@ def generate_comparison_results(json1, json2):
         comparison_results[key] = "✔" if match else "✘"
     return comparison_results
 
+# Function to generate a DataFrame for the comparison
+def generate_comparison_df(json1, json2, comparison_results):
+    """
+    Generate a DataFrame comparing two JSON objects.
+    """
+    flat_json1, order1 = flatten_json(json1)
+    flat_json2, _ = flatten_json(json2)
+
+    data = []
+    for key in order1:
+        val1 = flat_json1.get(key, "N/A")
+        val2 = flat_json2.get(key, "N/A")
+        match = comparison_results[key]
+        data.append([key, val1, val2, match])
+
+    df = pd.DataFrame(data, columns=['Attribute', 'Result with Extra Accuracy', 'Result without Extra Accuracy', 'Comparison'])
+    return df
+
+# Function to generate a DataFrame with only mismatched fields
+def generate_mismatch_df(json1, json2, comparison_results):
+    """
+    Generate a DataFrame showing only the mismatched fields between the two JSONs.
+    """
+    flat_json1, order1 = flatten_json(json1)
+    flat_json2, _ = flatten_json(json2)
+
+    data = []
+    for key in order1:
+        val1 = flat_json1.get(key, "N/A")
+        val2 = flat_json2.get(key, "N/A")
+        if comparison_results[key] == "✘":  # Only include mismatched fields
+            data.append([key, val1, val2])
+
+    # Create a DataFrame with only the mismatched fields
+    df = pd.DataFrame(data, columns=['Field', 'Result with Extra Accuracy', 'Result without Extra Accuracy'])
+    return df
+
+
 # Function to generate comparison DataFrame
 def generate_comparison_df(json1, json2, comparison_results):
     flat_json1, order1 = flatten_json(json1)
