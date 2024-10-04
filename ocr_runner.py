@@ -116,6 +116,9 @@ def run_parser(parsers):
 
         API_ENDPOINT = st.secrets["api"]["endpoint"]
 
+        response_json_extra = None
+        response_json_no_extra = None
+
         with st.spinner("Processing OCR..."):
             response_extra, time_taken_extra = send_request(image_paths, headers, form_data, True, API_ENDPOINT)
             response_no_extra, time_taken_no_extra = send_request(image_paths, headers, form_data, False, API_ENDPOINT)
@@ -131,16 +134,7 @@ def run_parser(parsers):
             success_extra = response_extra.status_code == 200
             success_no_extra = response_no_extra.status_code == 200
 
-            # Generate comparison results before displaying anything
-            comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
-            mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
-
-            # Display the mismatch fields first (above the results)
-            if not mismatch_df.empty:
-                st.subheader("Mismatched Fields")
-                st.dataframe(mismatch_df)
-
-            # Display results in two columns (this comes after the mismatch fields table)
+            # Display results in two columns
             col1, col2 = st.columns(2)
 
             if success_extra:
@@ -166,3 +160,17 @@ def run_parser(parsers):
             else:
                 with col2:
                     st.error(f"Request without Extra Accuracy failed. Status code: {response_no_extra.status_code}")
+
+            # Only proceed with comparison if both responses are successfully parsed
+            if response_json_extra and response_json_no_extra:
+                # Generate comparison results
+                comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
+                mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
+
+                # Display the mismatch fields first (above the results)
+                if not mismatch_df.empty:
+                    st.subheader("Mismatched Fields")
+                    st.dataframe(mismatch_df)
+
+            else:
+                st.error("Comparison failed. One or both responses were not successful.")
