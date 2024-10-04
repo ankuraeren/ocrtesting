@@ -64,10 +64,18 @@ def send_to_ocr_api(image_paths, parser_info):
 
     files = []
     for image_path in image_paths:
-        with open(image_path, 'rb') as file:
-            file_extension = os.path.splitext(image_path)[1].lower()
-            mime_type = f"image/{file_extension[1:]}" if file_extension != ".pdf" else "application/pdf"
-            files.append(('file', (os.path.basename(image_path), file, mime_type)))
+        try:
+            # Ensure the file exists and is accessible
+            if os.path.exists(image_path):
+                file_extension = os.path.splitext(image_path)[1].lower()
+                mime_type = f"image/{file_extension[1:]}" if file_extension != ".pdf" else "application/pdf"
+                files.append(('file', (os.path.basename(image_path), open(image_path, 'rb'), mime_type)))
+            else:
+                st.error(f"File not found: {image_path}")
+                return None
+        except Exception as e:
+            st.error(f"Error opening file {image_path}: {e}")
+            return None
 
     # Retrieve the API endpoint from Streamlit secrets
     api_endpoint = st.secrets["api"]["endpoint"]
@@ -80,6 +88,11 @@ def send_to_ocr_api(image_paths, parser_info):
     except requests.exceptions.RequestException as e:
         st.error(f"Error in OCR request: {e}")
         return None
+
+    finally:
+        # Close all file objects
+        for _, (filename, file_obj, _) in files:
+            file_obj.close()
 
 
 def run_parser(parsers):
