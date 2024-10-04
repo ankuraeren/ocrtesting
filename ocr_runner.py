@@ -137,8 +137,12 @@ def run_parser(parsers):
                     st.error(f"Request without Extra Accuracy failed. Status code: {response_no_extra.status_code}")
 
             # Generate comparison results
+            st.subheader("Comparison JSON")
             if success_extra and success_no_extra:
                 comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
+
+                # Display the full comparison JSON
+                st.expander("Comparison JSON").json(comparison_results)
 
                 # Display the comparison table
                 st.subheader("Comparison Table")
@@ -150,13 +154,9 @@ def run_parser(parsers):
                 grid_options = gb.build()
                 AgGrid(comparison_table, gridOptions=grid_options, height=500, theme='streamlit', enable_enterprise_modules=True)
 
-                # Display mismatched fields in a table
+                # Display mismatched fields in a table after the full comparison table
                 st.subheader("Mismatched Fields")
                 mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
                 st.dataframe(mismatch_df)
-
-                # Display the full comparison JSON after the table
-                st.subheader("Comparison JSON")
-                st.expander("Comparison JSON").json(comparison_results)
             else:
                 st.error("Comparison failed. One or both requests were unsuccessful.")
