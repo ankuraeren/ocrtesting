@@ -5,7 +5,6 @@ import streamlit as st
 from PIL import Image
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from st_aggrid import AgGrid, GridOptionsBuilder
-import base64
 import json
 
 # Main OCR parser function
@@ -76,20 +75,19 @@ def run_parser(parsers):
                     with open(pdf_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
 
-                    # Display PDF using an embedded viewer
+                    # Provide a link to view the PDF
+                    st.write(f"**Uploaded PDF:** {uploaded_file.name}")
                     with open(pdf_path, "rb") as f:
-                        pdf_data = f.read()
-                        b64_pdf = base64.b64encode(pdf_data).decode('utf-8')
-                        pdf_display = f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="800px"></iframe>'
-                        st.markdown(pdf_display, unsafe_allow_html=True)
+                        st.download_button(
+                            label="Download PDF",
+                            data=f,
+                            file_name=uploaded_file.name,
+                            mime="application/pdf"
+                        )
 
-                    # Provide a download button for the PDF
-                    st.download_button(
-                        label="Download PDF",
-                        data=pdf_data,
-                        file_name=uploaded_file.name,
-                        mime="application/pdf"
-                    )
+                    # Provide a link to view the PDF in a new tab
+                    pdf_link = f'<a href="file://{pdf_path}" target="_blank">Click here to view the PDF</a>'
+                    st.markdown(pdf_link, unsafe_allow_html=True)
 
                     file_paths.append(pdf_path)
 
