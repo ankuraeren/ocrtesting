@@ -71,14 +71,6 @@ def save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_
     pdf.output(pdf_filename)
     return pdf_filename
 
-# Function to create a download link for the PDF
-def create_download_link(file_path, link_text):
-    with open(file_path, "rb") as f:
-        pdf_data = f.read()
-    b64 = base64.b64encode(pdf_data).decode()
-    href = f'<a href="data:application/octet-stream;base64,{b64}" download="{file_path}">{link_text}</a>'
-    return href
-
 # Main OCR parser function
 def run_parser(parsers):
     st.subheader("Run OCR Parser")
@@ -202,25 +194,30 @@ def run_parser(parsers):
                 response_json_no_extra = response_no_extra.json()
                 comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
 
+                # Store results in session state to prevent loss during rerun
+                st.session_state['response_json_extra'] = response_json_extra
+                st.session_state['response_json_no_extra'] = response_json_no_extra
+                st.session_state['comparison_table'] = generate_comparison_df(response_json_extra, response_json_no_extra, comparison_results)
+                st.session_state['mismatch_df'] = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
+                st.session_state['file_paths'] = file_paths
+
                 # Display mismatched fields in a table
                 st.subheader("Mismatched Fields")
-                mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
-                st.dataframe(mismatch_df)
+                st.dataframe(st.session_state['mismatch_df'])
 
                 # Display the comparison table
                 st.subheader("Comparison Table")
-                comparison_table = generate_comparison_df(response_json_extra, response_json_no_extra, comparison_results)
-                gb = GridOptionsBuilder.from_dataframe(comparison_table)
+                gb = GridOptionsBuilder.from_dataframe(st.session_state['comparison_table'])
                 gb.configure_pagination(paginationAutoPageSize=True)
                 gb.configure_side_bar()
                 gb.configure_selection('single')
                 grid_options = gb.build()
-                AgGrid(comparison_table, gridOptions=grid_options, height=300, theme='streamlit', enable_enterprise_modules=True)
+                AgGrid(st.session_state['comparison_table'], gridOptions=grid_options, height=300, theme='streamlit', enable_enterprise_modules=True)
 
-                # Save as PDF button
-                if st.button("Save Results as PDF"):
-                    pdf_filename = save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_table, mismatch_df, file_paths)
-                    st.markdown(create_download_link(pdf_filename, "Click here to download the PDF"), unsafe_allow_html=True)
-                    st.success("Results saved as ocr_results.pdf")
+                # Save as PDF button using download_button
+                pdf_filename = save_results_as_pdf(response_json_extra, response_json_no_extra, st.session_state['comparison_table'], st.session_state['mismatch_df'], file_paths)
+                with open(pdf_filename, "rb") as pdf_file:
+                    PDFbyte = pdf_file.read()
+                st.download_button(label="Download Results as PDF", data=PDFbyte, file_name="ocr_results.pdf", mime="application/pdf")
             else:
                 st.error("Comparison failed. One or both requests were unsuccessful.")
