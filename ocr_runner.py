@@ -43,6 +43,7 @@ if 'csv_data' not in st.session_state:
 if 'csv_filename' not in st.session_state:
     st.session_state.csv_filename = None
 
+
 # Function to create the CSV from comparison and mismatch results
 def create_csv(comparison_table, mismatch_df, image_names):
     temp_dir = tempfile.mkdtemp()
