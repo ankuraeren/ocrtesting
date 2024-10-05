@@ -4,10 +4,9 @@ import requests
 import tempfile
 import logging
 import streamlit as st
-from urllib.parse import urlencode
+from urllib.parse import quote
 
 LOCAL_PARSERS_FILE = os.path.join(tempfile.gettempdir(), 'parsers.json')
-
 
 def download_parsers_from_github():
     headers = {'Authorization': f'token {st.secrets["github"]["access_token"]}'}
@@ -26,14 +25,12 @@ def download_parsers_from_github():
     except Exception as e:
         st.error(f"Error: {e}")
 
-
 def save_parsers():
     try:
         with open(LOCAL_PARSERS_FILE, 'w') as f:
             json.dump(st.session_state['parsers'], f, indent=4)
     except Exception as e:
         st.error(f"Error: {e}")
-
 
 def add_new_parser():
     st.subheader("Add a New Parser")
@@ -62,36 +59,37 @@ def add_new_parser():
                 save_parsers()
                 st.success("The parser has been added successfully.")
 
-
 def list_parsers():
     st.subheader("List of All Parsers")
     if not st.session_state['parsers']:
         st.info("No parsers available. Please add a parser first.")
         return
 
+    # Count parser_app_id occurrences for dynamic numbering
+    app_id_count = {}
+    for parser_name, details in st.session_state['parsers'].items():
+        app_id = details['parser_app_id']
+        if app_id in app_id_count:
+            app_id_count[app_id] += 1
+        else:
+            app_id_count[app_id] = 1
+
+    # Iterate over the parsers and display details
     for parser_name, details in st.session_state['parsers'].items():
         with st.expander(parser_name):
             st.write(f"**API Key:** {details['api_key']}")
             st.write(f"**Parser App ID:** {details['parser_app_id']}")
             st.write(f"**Extra Accuracy:** {'Yes' if details['extra_accuracy'] else 'No'}")
 
-            # Generate a direct link to run the parser as a button
-            if st.button(f"Run Parser for {parser_name}", key=f"run_{parser_name}"):
-                st.experimental_set_query_params(parser=parser_name, client='False')
-                st.experimental_rerun()
+            app_id_num = app_id_count[details['parser_app_id']]  # Get the number associated with parser_app_id
+            parser_page_link = f"https://ocrtesting-csxcl7uybqbmwards96kjo.streamlit.app/?parser={quote(parser_name)}&client=true&id={app_id_num}"
 
-            # Generate dynamic parser page link button
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                if st.button(f"Generate Parser Page for {parser_name}", key=f"generate_{parser_name}"):
-                    query_params = urlencode({'parser': parser_name, 'client': 'True'})
-                    parser_page_url = f"/?{query_params}"
-                    st.write(f"**Generated Link:** [{parser_page_url}]({parser_page_url})", unsafe_allow_html=True)
-
-            with col2:
-                # Delete parser button
-                if st.button(f"Delete {parser_name}", key=f"delete_{parser_name}"):
-                    del st.session_state['parsers'][parser_name]
-                    save_parsers()
-                    st.success(f"Parser '{parser_name}' has been deleted.")
-                    st.experimental_rerun()  # Rerun to refresh the list after deletion
+            # Generate and display link button
+            if st.button(f"Generate Parser Page for {parser_name}", key=f"generate_{parser_name}"):
+                st.write(f"**Parser Page Link:** [Click Here]({parser_page_link})")
+                
+            # Add Delete button
+            if st.button(f"Delete {parser_name}", key=f"delete_{parser_name}"):
+                del st.session_state['parsers'][parser_name]
+                save_parsers()
+                st.success(f"Parser '{parser_name}' has been deleted.")
