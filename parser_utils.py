@@ -71,11 +71,9 @@ def list_parsers():
             st.write(f"**Parser App ID:** {details['parser_app_id']}")
             st.write(f"**Extra Accuracy:** {'Yes' if details['extra_accuracy'] else 'No'}")
 
-            # Button to run the parser directly
-            if st.button(f"Run Parser for {parser_name}", key=f"run_{parser_name}"):
-                query_params = urlencode({'parser': parser_name, 'client': 'False'})
-                st.experimental_set_query_params(**{'parser': parser_name})
-                st.experimental_rerun()
+            # Direct link to run the parser
+            run_parser_link = f"/?parser={parser_name}&client=False"
+            st.markdown(f"[Run Parser]({run_parser_link})")
 
             # Generate dynamic parser page link button
             if st.button(f"Generate Parser Page for {parser_name}", key=f"generate_{parser_name}"):
@@ -83,6 +81,7 @@ def list_parsers():
                 parser_page_url = f"/?{query_params}"
                 st.write(f"**Generated Link:** [{parser_page_url}]({parser_page_url})")
 
+            # Delete parser button
             if st.button(f"Delete {parser_name}", key=f"delete_{parser_name}"):
                 del st.session_state['parsers'][parser_name]
                 save_parsers()
