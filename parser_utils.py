@@ -70,19 +70,14 @@ def list_parsers():
             st.write(f"**API Key:** {details['api_key']}")
             st.write(f"**Parser App ID:** {details['parser_app_id']}")
             st.write(f"**Extra Accuracy:** {'Yes' if details['extra_accuracy'] else 'No'}")
+            
+            # Generate a dynamic URL to run the parser
+            run_parser_url = st.experimental_get_query_params()
+            run_parser_url = f"?parser={parser_name}&client=False"
 
             # Button to run the parser directly
-            if st.button(f"Run Parser for {parser_name}", key=f"run_{parser_name}"):
-                query_params = urlencode({'parser': parser_name, 'client': 'False'})
-                st.experimental_set_query_params(**{'parser': parser_name})
-                st.experimental_rerun()
-
-            # Generate dynamic parser page link button
-            if st.button(f"Generate Parser Page for {parser_name}", key=f"generate_{parser_name}"):
-                query_params = urlencode({'parser': parser_name, 'client': 'True'})
-                parser_page_url = f"/?{query_params}"
-                st.write(f"**Generated Link:** [{parser_page_url}]({parser_page_url})")
-
+            st.markdown(f"[Run Parser](/{run_parser_url})", unsafe_allow_html=True)
+            
             if st.button(f"Delete {parser_name}", key=f"delete_{parser_name}"):
                 del st.session_state['parsers'][parser_name]
                 save_parsers()
