@@ -8,6 +8,7 @@ from ocr_utils import send_request, generate_comparison_results, generate_compar
 from st_aggrid import AgGrid, GridOptionsBuilder
 import json
 import pandas as pd
+import atexit
 
 # ===========================
 # 1. Initialize session_state
@@ -81,11 +82,11 @@ def cleanup_temp_dirs():
             st.warning(f"Could not remove temporary directory {temp_dir}: {e}")
     st.session_state.temp_dirs = []
 
-import atexit
+# Register cleanup on app exit
 atexit.register(cleanup_temp_dirs)
 
 # ===========================
-# 3. Define Main Function
+# 3. Define Main OCR Parser Function
 # ===========================
 
 def run_parser(parsers):
@@ -348,7 +349,7 @@ def run_parser(parsers):
                 st.error("Comparison failed. One or both requests were unsuccessful.")
 
     # ===========================
-    # 4. Main Execution
+    # 4. Define Main Execution Function
     # ===========================
 
     def main():
@@ -367,7 +368,16 @@ def run_parser(parsers):
             # Add more parsers as needed
         }
 
-        run_parser(parsers)
+        # Example requested_parser and parser_details; replace with your actual logic
+        # Assuming you have these variables defined somewhere
+        # For demonstration, let's set them manually
+        requested_parser = "Parser1"  # Replace with actual logic
+        parser_details = parsers.get(requested_parser, None)
+
+        if parser_details:
+            run_parser({requested_parser: parser_details})
+        else:
+            st.error("This parser no longer exists. Please contact support.")
 
     if __name__ == "__main__":
         main()
