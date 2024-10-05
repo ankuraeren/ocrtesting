@@ -140,69 +140,49 @@ def initialize_session_state():
         ])
         logging.info("Session state has been reset.")
     
-    def add_session_state_key(key, default_value):
+    def add_session_state_key(key: str, default_value: Any):
         """
         Add a new key to the session state with a default value if it doesn't exist.
         
-        Parameters:
+        Args:
             key (str): The session state key to add.
-            default_value: The default value for the key.
+            default_value (Any): The default value for the key.
         """
         if key not in st.session_state:
             st.session_state[key] = default_value
             logging.info(f"Added '{key}' to session_state with default value.")
     
-    def get_session_state_key(key):
+    def get_session_state_key(key: str) -> Any:
         """
         Retrieve the value of a session state key.
         
-        Parameters:
+        Args:
             key (str): The session state key to retrieve.
         
         Returns:
-            The value associated with the key, or None if it doesn't exist.
+            Any: The value associated with the key, or None if it doesn't exist.
         """
         return st.session_state.get(key, None)
     
-    def set_session_state_key(key, value):
+    def set_session_state_key(key: str, value: Any):
         """
         Set the value of a session state key.
         
-        Parameters:
+        Args:
             key (str): The session state key to set.
-            value: The value to assign to the key.
+            value (Any): The value to assign to the key.
         """
         st.session_state[key] = value
         logging.info(f"Set '{key}' in session_state to '{value}'.")
     
-    def initialize_dynamic_keys(field_mappings):
+    def initialize_dynamic_keys(field_mappings: Dict[str, str]):
         """
         Dynamically add session state keys based on field mappings.
         This allows for flexible handling of various parser types.
         
-        Parameters:
-            field_mappings (dict): A dictionary mapping JSON fields to CSV columns.
+        Args:
+            field_mappings (Dict[str, str]): A dictionary mapping JSON fields to CSV columns.
         """
         for json_field, csv_column in field_mappings.items():
             add_session_state_key(csv_column, "")
             logging.info(f"Dynamically initialized session_state key '{csv_column}'.")
-    
-    # Example usage:
-    # from session_state import initialize_session_state, reset_session_state, add_session_state_key
-    ```
-
----
-
-## **3. Explanation of `session_state.py` Components**
-
-### **a. Logging Configuration**
-
-```python
-import logging
-
-logging.basicConfig(
-    filename='session_state.log',
-    filemode='a',
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
