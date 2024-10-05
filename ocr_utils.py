@@ -1,4 +1,4 @@
-### Updated ocr_utils.py ###
+# ocr_utils.py
 
 import os
 import json
@@ -6,6 +6,7 @@ import requests
 import time
 import pandas as pd
 import streamlit as st
+import tempfile
 
 # Function to flatten nested JSON
 def flatten_json(y):
@@ -58,7 +59,12 @@ def generate_comparison_df(json1, json2, comparison_results):
         match = comparison_results[key]
         data.append([key, val1, val2, match])
 
-    df = pd.DataFrame(data, columns=['Attribute', 'Result with Extra Accuracy', 'Result without Extra Accuracy', 'Comparison'])
+    df = pd.DataFrame(data, columns=[
+        'Attribute', 
+        'Result with Extra Accuracy', 
+        'Result without Extra Accuracy', 
+        'Comparison'
+    ])
     return df
 
 # Function to generate a DataFrame with only mismatched fields
@@ -74,7 +80,11 @@ def generate_mismatch_df(json1, json2, comparison_results):
             data.append([key, val1, val2])
 
     # Create a DataFrame with only the mismatched fields
-    df = pd.DataFrame(data, columns=['Field', 'Result with Extra Accuracy', 'Result without Extra Accuracy'])
+    df = pd.DataFrame(data, columns=[
+        'Field', 
+        'Result with Extra Accuracy', 
+        'Result without Extra Accuracy'
+    ])
     return df
 
 # Function to send OCR request
@@ -107,7 +117,13 @@ def send_request(image_paths, headers, form_data, extra_accuracy, API_ENDPOINT):
 
     try:
         start_time = time.time()
-        response = requests.post(API_ENDPOINT, headers=local_headers, data=local_form_data, files=files if files else None, timeout=120)
+        response = requests.post(
+            API_ENDPOINT, 
+            headers=local_headers, 
+            data=local_form_data, 
+            files=files if files else None, 
+            timeout=120
+        )
         time_taken = time.time() - start_time
         return response, time_taken
     except requests.exceptions.RequestException as e:
@@ -118,3 +134,12 @@ def send_request(image_paths, headers, form_data, extra_accuracy, API_ENDPOINT):
         for _, file_tuple in files:
             file_tuple[1].close()
 
+# Function to create CSV dynamically based on compiled_results
+def create_csv(compiled_results):
+    temp_dir = tempfile.mkdtemp()
+    csv_path = os.path.join(temp_dir, "ocr_results.csv")
+
+    # Save to CSV
+    compiled_results.to_csv(csv_path, index=False)
+
+    return csv_path
