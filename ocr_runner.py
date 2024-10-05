@@ -55,7 +55,6 @@ def run_parser(parsers):
     parser_info = parsers[selected_parser]
 
     st.write(f"**Selected Parser:** {selected_parser}")
-    st.write(f"**Parser App ID:** {parser_info['parser_app_id']}")
     st.write(f"**Extra Accuracy Required:** {'Yes' if parser_info['extra_accuracy'] else 'No'}")
 
     file_paths = []
