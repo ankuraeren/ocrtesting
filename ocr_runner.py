@@ -179,12 +179,17 @@ def run_parser(parsers):
             response_extra, time_taken_extra = send_request(file_paths, headers, form_data, True, API_ENDPOINT)
             response_no_extra, time_taken_no_extra = send_request(file_paths, headers, form_data, False, API_ENDPOINT)
 
-        # Cleanup temporary directories
-        for temp_dir in temp_dirs:
-            try:
-                shutil.rmtree(temp_dir)
-            except Exception as e:
-                st.warning(f"Could not remove temporary directory {temp_dir}: {e}")
+        # Store results in session state
+        st.session_state['response_extra'] = response_extra
+        st.session_state['response_no_extra'] = response_no_extra
+        st.session_state['file_paths'] = file_paths
+        st.session_state['temp_dirs'] = temp_dirs
+
+    # Display results if available in session state
+    if 'response_extra' in st.session_state and 'response_no_extra' in st.session_state:
+        response_extra = st.session_state['response_extra']
+        response_no_extra = st.session_state['response_no_extra']
+        file_paths = st.session_state['file_paths']
 
         if response_extra and response_no_extra:
             success_extra = response_extra.status_code == 200
@@ -217,3 +222,11 @@ def run_parser(parsers):
                     st.success("Results saved as ocr_results.pdf")
             else:
                 st.error("Comparison failed. One or both requests were unsuccessful.")
+
+        # Cleanup temporary directories
+        if 'temp_dirs' in st.session_state:
+            for temp_dir in st.session_state['temp_dirs']:
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception as e:
+                    st.warning(f"Could not remove temporary directory {temp_dir}: {e}")
