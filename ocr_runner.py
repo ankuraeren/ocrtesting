@@ -3,8 +3,7 @@ import tempfile
 import shutil
 import streamlit as st
 from PIL import Image
-from PyPDF2 import PdfReader
-from ocr_utils import send_request
+from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from parser_utils import parse_comparison_results
 from st_aggrid import AgGrid, GridOptionsBuilder
 import json
@@ -52,12 +51,7 @@ def initialize_session_state():
     if 'csv_filename' not in st.session_state:
         st.session_state.csv_filename = None
     if 'compiled_results' not in st.session_state:
-        st.session_state.compiled_results = pd.DataFrame(columns=[
-            'Document Name', 'Record_Type', 'Invoice Number', 'Shipper Name', 'Biller Name',
-            'Invoice Date', 'Item Description', 'Unit Price', 'Quantity', 'Total Price',
-            'Ledger ID', 'Account Name', 'Date', 'Transaction Description', 'Amount', 'Balance',
-            'Name', 'Company', 'Position', 'Phone', 'Email'
-        ])
+        st.session_state.compiled_results = pd.DataFrame()
 
 def create_csv(compiled_results):
     """
@@ -147,6 +141,7 @@ def run_parser(parsers):
 
     st.write(f"**Selected Parser:** {selected_parser}")
     st.write(f"**Extra Accuracy Required:** {'Yes' if parser_info['extra_accuracy'] else 'No'}")
+    st.write(f"**Parser Type:** {parser_info.get('type', 'Unknown')}")
 
     # File uploader
     uploaded_file = st.file_uploader(
@@ -213,12 +208,7 @@ def run_parser(parsers):
         st.session_state.response_json_no_extra = None
         st.session_state.csv_data = None
         st.session_state.csv_filename = None
-        st.session_state.compiled_results = pd.DataFrame(columns=[
-            'Document Name', 'Record_Type', 'Invoice Number', 'Shipper Name', 'Biller Name',
-            'Invoice Date', 'Item Description', 'Unit Price', 'Quantity', 'Total Price',
-            'Ledger ID', 'Account Name', 'Date', 'Transaction Description', 'Amount', 'Balance',
-            'Name', 'Company', 'Position', 'Phone', 'Email'
-        ])
+        st.session_state.compiled_results = pd.DataFrame()
         st.experimental_rerun()
 
     # Run OCR processing
@@ -355,7 +345,5 @@ def run_parser(parsers):
                         )
                     else:
                         st.error("Parsed DataFrame is empty. Check parser logic.")
-                else:
-                    st.error("Comparison failed. One or both requests were unsuccessful.")
             else:
                 st.error("OCR processing failed. Please try again.")
