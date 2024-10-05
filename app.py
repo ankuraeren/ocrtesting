@@ -22,6 +22,39 @@ def main():
         download_parsers_from_github()
         st.session_state.loaded = True
 
+    # Add custom CSS for the sidebar radio buttons (styled similarly to the run parser page)
+    st.markdown("""
+        <style>
+        .stRadio [role=radiogroup] {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        div[role='radiogroup'] label div[data-testid='stMarkdownContainer'] {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFFFFF;
+        }
+        div[role='radiogroup'] label {
+            background-color: #2B2B2B;
+            padding: 10px 15px;
+            border-radius: 12px;
+            border: 1px solid #3B3B3B;
+            cursor: pointer;
+        }
+        div[role='radiogroup'] label:hover {
+            background-color: #474747;
+        }
+        div[role='radiogroup'] input[type='radio']:checked + label {
+            background-color: #FF5F5F;
+            border-color: #FF5F5F;
+        }
+        div[role='radiogroup'] input[type='radio']:checked + label div[data-testid='stMarkdownContainer'] {
+            color: #FFFFFF;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     # Client View: Display the Run Parser page for a specific parser
     if client_view and requested_parser:
         if requested_parser in st.session_state['parsers']:
@@ -45,7 +78,7 @@ def main():
         </ul>
     """, unsafe_allow_html=True)
 
-    # Radio button menu
+    # Radio button menu with custom style
     menu = ["List Parsers", "Run Parser", "Add Parser"]
     choice = st.sidebar.radio("Menu", menu)
 
