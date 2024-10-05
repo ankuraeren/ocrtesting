@@ -7,79 +7,18 @@ from PyPDF2 import PdfReader
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from st_aggrid import AgGrid, GridOptionsBuilder
 import json
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
+import pandas as pd
 
 
-# Function to create the PDF from OCR results
-def create_pdf(response_json_extra, response_json_no_extra, comparison_table, mismatch_df, file_paths):
+# Function to create the CSV from comparison results
+def create_csv(comparison_table):
     temp_dir = tempfile.mkdtemp()
-    pdf_path = os.path.join(temp_dir, "ocr_results.pdf")
+    csv_path = os.path.join(temp_dir, "ocr_comparison_results.csv")
 
-    c = canvas.Canvas(pdf_path, pagesize=letter)
-    width, height = letter
-    y_offset = height - 40
-
-    # Add title
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(10, y_offset, "OCR Results Report")
-    c.setFont("Helvetica", 12)
-    y_offset -= 30
-
-    # Add images to PDF
-    c.drawString(10, y_offset, "Uploaded Files:")
-    y_offset -= 20
-    for file_path in file_paths:
-        if file_path.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff')):
-            try:
-                img_file = Image.open(file_path)
-                img_width, img_height = img_file.size
-                aspect_ratio = img_height / float(img_width)
-                img_display_width = width - 20
-                img_display_height = img_display_width * aspect_ratio
-
-                img_file.thumbnail((img_display_width, img_display_height), Image.ANTIALIAS)
-                img_file_path = os.path.join(temp_dir, 'temp_image.jpg')
-                img_file.save(img_file_path)
-                c.drawImage(img_file_path, 10, y_offset - img_display_height, width=img_display_width, height=img_display_height)
-                y_offset -= img_display_height + 20
-            except Exception as e:
-                st.error(f"Error processing image {file_path} for PDF: {e}")
-
-    # Add expanded JSONs to the PDF
-    c.drawString(10, y_offset, "Results with Extra Accuracy:")
-    y_offset -= 20
-    text_extra = json.dumps(response_json_extra, indent=4)[:1000]
-    c.drawString(10, y_offset, text_extra)
-    y_offset -= 200
-
-    c.drawString(10, y_offset, "Results without Extra Accuracy:")
-    y_offset -= 20
-    text_no_extra = json.dumps(response_json_no_extra, indent=4)[:1000]
-    c.drawString(10, y_offset, text_no_extra)
-    y_offset -= 200
-
-    # Add comparison table to the PDF
-    c.drawString(10, y_offset, "Comparison Table:")
-    y_offset -= 20
-    for i in range(len(comparison_table)):
-        row = comparison_table.iloc[i]
-        text = f"{row['Attribute']}: {row['Result with Extra Accuracy']} vs {row['Result without Extra Accuracy']} - {row['Comparison']}"
-        c.drawString(10, y_offset, text)
-        y_offset -= 20
-
-    # Add mismatched fields to the PDF
-    c.drawString(10, y_offset, "Mismatched Fields:")
-    y_offset -= 20
-    for i in range(len(mismatch_df)):
-        row = mismatch_df.iloc[i]
-        text = f"{row['Field']}: {row['Result with Extra Accuracy']} vs {row['Result without Extra Accuracy']}"
-        c.drawString(10, y_offset, text)
-        y_offset -= 20
-
-    c.showPage()
-    c.save()
-    return pdf_path
+    # Convert the DataFrame into a CSV file
+    comparison_table.to_csv(csv_path, index=False)
+    
+    return csv_path
 
 
 # Main OCR parser function
@@ -250,20 +189,20 @@ def run_parser(parsers):
                 st.subheader("Comparison JSON")
                 st.expander("Comparison JSON").json(comparison_results)
 
-                # Add a download button for the generated PDF
-                pdf_file_path = create_pdf(response_json_extra, response_json_no_extra, comparison_table, mismatch_df, file_paths)
-                with open(pdf_file_path, "rb") as pdf_file:
+                # Add a download button for the generated CSV
+                csv_file_path = create_csv(comparison_table)
+                with open(csv_file_path, "rb") as csv_file:
                     st.download_button(
-                        label="Download Results as PDF",
-                        data=pdf_file,
-                        file_name="ocr_results.pdf",
-                        mime="application/pdf"
+                        label="Download Comparison Results as CSV",
+                        data=csv_file,
+                        file_name="ocr_comparison_results.csv",
+                        mime="text/csv"
                     )
 
             else:
                 st.error("Comparison failed. One or both requests were unsuccessful.")
 
-        # Cleanup temporary directories AFTER the PDF generation
+        # Cleanup temporary directories AFTER the CSV generation
         for temp_dir in temp_dirs:
             try:
                 shutil.rmtree(temp_dir)
