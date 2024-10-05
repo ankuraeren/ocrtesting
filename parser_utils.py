@@ -4,7 +4,7 @@ import requests
 import tempfile
 import logging
 import streamlit as st
-from urllib.parse import quote
+from urllib.parse import urlencode
 
 LOCAL_PARSERS_FILE = os.path.join(tempfile.gettempdir(), 'parsers.json')
 
@@ -65,30 +65,19 @@ def list_parsers():
         st.info("No parsers available. Please add a parser first.")
         return
 
-    # Count parser_app_id occurrences for dynamic numbering
-    app_id_count = {}
-    for parser_name, details in st.session_state['parsers'].items():
-        app_id = details['parser_app_id']
-        if app_id in app_id_count:
-            app_id_count[app_id] += 1
-        else:
-            app_id_count[app_id] = 1
-
-    # Iterate over the parsers and display details
     for parser_name, details in st.session_state['parsers'].items():
         with st.expander(parser_name):
             st.write(f"**API Key:** {details['api_key']}")
             st.write(f"**Parser App ID:** {details['parser_app_id']}")
             st.write(f"**Extra Accuracy:** {'Yes' if details['extra_accuracy'] else 'No'}")
+            
+            # Generate a dynamic URL to run the parser
+            run_parser_url = st.experimental_get_query_params()
+            run_parser_url = f"?parser={parser_name}&client=False"
 
-            app_id_num = app_id_count[details['parser_app_id']]  # Get the number associated with parser_app_id
-            parser_page_link = f"https://ocrtesting-csxcl7uybqbmwards96kjo.streamlit.app/?parser={quote(parser_name)}&client=true&id={app_id_num}"
-
-            # Generate and display link button
-            if st.button(f"Generate Parser Page for {parser_name}", key=f"generate_{parser_name}"):
-                st.write(f"**Parser Page Link:** [Click Here]({parser_page_link})")
-                
-            # Add Delete button
+            # Button to run the parser directly
+            st.markdown(f"[Run Parser](/{run_parser_url})", unsafe_allow_html=True)
+            
             if st.button(f"Delete {parser_name}", key=f"delete_{parser_name}"):
                 del st.session_state['parsers'][parser_name]
                 save_parsers()
