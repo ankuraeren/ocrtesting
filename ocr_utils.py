@@ -117,5 +117,3 @@ def send_request(image_paths, headers, form_data, extra_accuracy, API_ENDPOINT):
         # Cleanup files
         for _, file_tuple in files:
             file_tuple[1].close()
-
-
