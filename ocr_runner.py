@@ -10,6 +10,7 @@ import json
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
+
 # Function to create the PDF from OCR results
 def create_pdf(response_json_extra, response_json_no_extra, comparison_table, mismatch_df, file_paths):
     temp_dir = tempfile.mkdtemp()
@@ -37,8 +38,10 @@ def create_pdf(response_json_extra, response_json_no_extra, comparison_table, mi
                 img_display_width = width - 20
                 img_display_height = img_display_width * aspect_ratio
 
-                img_file.save(os.path.join(temp_dir, 'temp_image.jpg'))
-                c.drawImage(os.path.join(temp_dir, 'temp_image.jpg'), 10, y_offset - img_display_height, width=img_display_width, height=img_display_height)
+                img_file.thumbnail((img_display_width, img_display_height), Image.ANTIALIAS)
+                img_file_path = os.path.join(temp_dir, 'temp_image.jpg')
+                img_file.save(img_file_path)
+                c.drawImage(img_file_path, 10, y_offset - img_display_height, width=img_display_width, height=img_display_height)
                 y_offset -= img_display_height + 20
             except Exception as e:
                 st.error(f"Error processing image {file_path} for PDF: {e}")
@@ -77,6 +80,7 @@ def create_pdf(response_json_extra, response_json_no_extra, comparison_table, mi
     c.showPage()
     c.save()
     return pdf_path
+
 
 # Main OCR parser function
 def run_parser(parsers):
@@ -192,13 +196,6 @@ def run_parser(parsers):
             response_extra, time_taken_extra = send_request(file_paths, headers, form_data, True, API_ENDPOINT)
             response_no_extra, time_taken_no_extra = send_request(file_paths, headers, form_data, False, API_ENDPOINT)
 
-        # Cleanup temporary directories
-        for temp_dir in temp_dirs:
-            try:
-                shutil.rmtree(temp_dir)
-            except Exception as e:
-                st.warning(f"Could not remove temporary directory {temp_dir}: {e}")
-
         if response_extra and response_no_extra:
             success_extra = response_extra.status_code == 200
             success_no_extra = response_no_extra.status_code == 200
@@ -265,3 +262,10 @@ def run_parser(parsers):
 
             else:
                 st.error("Comparison failed. One or both requests were unsuccessful.")
+
+        # Cleanup temporary directories AFTER the PDF generation
+        for temp_dir in temp_dirs:
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception as e:
+                st.warning(f"Could not remove temporary directory {temp_dir}: {e}")
