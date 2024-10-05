@@ -9,6 +9,7 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 import pandas as pd
 from fpdf import FPDF
 import base64
+import json
 
 # Function to save results as PDF
 def save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_table, mismatch_df, file_paths):
@@ -178,13 +179,6 @@ def run_parser(parsers):
             response_extra, time_taken_extra = send_request(file_paths, headers, form_data, True, API_ENDPOINT)
             response_no_extra, time_taken_no_extra = send_request(file_paths, headers, form_data, False, API_ENDPOINT)
 
-        # Cleanup temporary directories
-        for temp_dir in temp_dirs:
-            try:
-                shutil.rmtree(temp_dir)
-            except Exception as e:
-                st.warning(f"Could not remove temporary directory {temp_dir}: {e}")
-
         if response_extra and response_no_extra:
             success_extra = response_extra.status_code == 200
             success_no_extra = response_no_extra.status_code == 200
@@ -214,10 +208,16 @@ def run_parser(parsers):
                 grid_options = gb.build()
                 AgGrid(st.session_state['comparison_table'], gridOptions=grid_options, height=300, theme='streamlit', enable_enterprise_modules=True)
 
-                # Save as PDF button using download_button
-                pdf_filename = save_results_as_pdf(response_json_extra, response_json_no_extra, st.session_state['comparison_table'], st.session_state['mismatch_df'], file_paths)
-                with open(pdf_filename, "rb") as pdf_file:
-                    PDFbyte = pdf_file.read()
-                st.download_button(label="Download Results as PDF", data=PDFbyte, file_name="ocr_results.pdf", mime="application/pdf")
-            else:
-                st.error("Comparison failed. One or both requests were unsuccessful.")
+                # Save as PDF button
+                if st.button("Save Results as PDF"):
+                    pdf_filename = save_results_as_pdf(response_json_extra, response_json_no_extra, st.session_state['comparison_table'], st.session_state['mismatch_df'], file_paths)
+                    with open(pdf_filename, "rb") as pdf_file:
+                        PDFbyte = pdf_file.read()
+                    st.download_button(label="Download Results as PDF", data=PDFbyte, file_name="ocr_results.pdf", mime="application/pdf")
+
+        # Cleanup temporary directories after PDF generation
+        for temp_dir in temp_dirs:
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception as e:
+                st.warning(f"Could not remove temporary directory {temp_dir}: {e}")
