@@ -1,3 +1,5 @@
+### Updated ocr_runner.py ###
+
 import os
 import tempfile
 import shutil
@@ -6,6 +8,8 @@ from PIL import Image
 from PyPDF2 import PdfReader
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from st_aggrid import AgGrid, GridOptionsBuilder
+import plotly.express as px
+import pandas as pd
 
 # Main OCR parser function
 def run_parser(parsers):
@@ -170,6 +174,48 @@ def run_parser(parsers):
                 gb.configure_selection('single')
                 grid_options = gb.build()
                 AgGrid(comparison_table, gridOptions=grid_options, height=500, theme='streamlit', enable_enterprise_modules=True)
+
+                # Display analytics and insights
+                st.subheader("Analytics and Insights")
+
+                # Matched vs Mismatched Fields
+                match_count = sum(1 for v in comparison_results.values() if v == "✔")
+                mismatch_count = sum(1 for v in comparison_results.values() if v == "✘")
+                match_data = pd.DataFrame({
+                    'Fields': ['Matched', 'Mismatched'],
+                    'Count': [match_count, mismatch_count]
+                })
+                st.plotly_chart(px.pie(match_data, values='Count', names='Fields', title='Matched vs. Mismatched Fields'))
+
+                # Processing Time Comparison
+                st.subheader("Processing Time Comparison")
+                time_data = pd.DataFrame({
+                    'Method': ['With Extra Accuracy', 'Without Extra Accuracy'],
+                    'Time (s)': [time_taken_extra, time_taken_no_extra]
+                })
+                st.plotly_chart(px.bar(time_data, x='Method', y='Time (s)', title='Processing Time Comparison', text='Time (s)'))
+
+                # Summary Metrics
+                st.subheader("Summary Metrics")
+                st.metric(label="Total Fields Extracted", value=len(comparison_results))
+                st.metric(label="Matched Fields", value=match_count)
+                st.metric(label="Mismatched Fields", value=mismatch_count)
+
+                # Word Cloud (if applicable)
+                try:
+                    from wordcloud import WordCloud
+                    import matplotlib.pyplot as plt
+
+                    all_text = " ".join(flatten_json(response_json_extra)[0].values())
+                    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(all_text)
+
+                    st.subheader("Word Cloud of Extracted Text")
+                    fig, ax = plt.subplots()
+                    ax.imshow(wordcloud, interpolation='bilinear')
+                    ax.axis('off')
+                    st.pyplot(fig)
+                except Exception as e:
+                    st.warning(f"Could not generate word cloud: {e}")
 
                 # Display the full comparison JSON after the table
                 st.subheader("Comparison JSON")
