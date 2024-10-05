@@ -10,6 +10,12 @@ import pandas as pd
 from fpdf import FPDF
 import base64
 import json
+import re
+
+# Function to clean text for PDF
+def clean_text_for_pdf(text):
+    # Remove or replace any non-ASCII characters
+    return re.sub(r'[^\x00-\x7F]+', ' ', text)
 
 # Function to save results as PDF
 def save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_table, mismatch_df, file_paths):
@@ -41,13 +47,13 @@ def save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_
     pdf.set_font("Arial", size=14, style='B')
     pdf.cell(200, 10, txt="Results with Extra Accuracy:", ln=True, align='L')
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 10, txt=json.dumps(response_json_extra, indent=4))
+    pdf.multi_cell(0, 10, txt=clean_text_for_pdf(json.dumps(response_json_extra, indent=4)))
 
     pdf.add_page()
     pdf.set_font("Arial", size=14, style='B')
     pdf.cell(200, 10, txt="Results without Extra Accuracy:", ln=True, align='L')
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 10, txt=json.dumps(response_json_no_extra, indent=4))
+    pdf.multi_cell(0, 10, txt=clean_text_for_pdf(json.dumps(response_json_no_extra, indent=4)))
 
     # Add comparison table to the PDF
     pdf.add_page()
@@ -56,7 +62,7 @@ def save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_
     pdf.set_font("Arial", size=10)
     for i in range(len(comparison_table)):
         row = comparison_table.iloc[i]
-        pdf.cell(200, 10, txt=f"{row['Attribute']}: {row['Result with Extra Accuracy']} vs {row['Result without Extra Accuracy']} - {row['Comparison']}", ln=True, align='L')
+        pdf.cell(200, 10, txt=clean_text_for_pdf(f"{row['Attribute']}: {row['Result with Extra Accuracy']} vs {row['Result without Extra Accuracy']} - {row['Comparison']}"), ln=True, align='L')
 
     # Add mismatched fields to the PDF
     pdf.add_page()
@@ -65,7 +71,7 @@ def save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_
     pdf.set_font("Arial", size=10)
     for i in range(len(mismatch_df)):
         row = mismatch_df.iloc[i]
-        pdf.cell(200, 10, txt=f"{row['Field']}: {row['Result with Extra Accuracy']} vs {row['Result without Extra Accuracy']}", ln=True, align='L')
+        pdf.cell(200, 10, txt=clean_text_for_pdf(f"{row['Field']}: {row['Result with Extra Accuracy']} vs {row['Result without Extra Accuracy']}"), ln=True, align='L')
 
     # Save the PDF
     temp_dir = tempfile.mkdtemp()
@@ -201,27 +207,4 @@ def run_parser(parsers):
                 st.session_state['pdf_filename'] = pdf_filename
 
                 # Display mismatched fields in a table
-                st.subheader("Mismatched Fields")
-                st.dataframe(st.session_state['mismatch_df'])
-
-                # Display the comparison table
-                st.subheader("Comparison Table")
-                gb = GridOptionsBuilder.from_dataframe(st.session_state['comparison_table'])
-                gb.configure_pagination(paginationAutoPageSize=True)
-                gb.configure_side_bar()
-                gb.configure_selection('single')
-                grid_options = gb.build()
-                AgGrid(st.session_state['comparison_table'], gridOptions=grid_options, height=300, theme='streamlit', enable_enterprise_modules=True)
-
-                # Download PDF button
-                if 'pdf_filename' in st.session_state:
-                    with open(st.session_state['pdf_filename'], "rb") as pdf_file:
-                        PDFbyte = pdf_file.read()
-                    st.download_button(label="Download Results as PDF", data=PDFbyte, file_name="ocr_results.pdf", mime="application/pdf")
-
-        # Cleanup temporary directories after PDF generation
-        for temp_dir in temp_dirs:
-            try:
-                shutil.rmtree(temp_dir)
-            except Exception as e:
-                st.warning(f"Could not remove temporary directory {temp_dir}: {e}")
+                st.subheader
