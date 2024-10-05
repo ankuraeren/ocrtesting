@@ -68,7 +68,8 @@ def save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_
         pdf.cell(200, 10, txt=f"{row['Field']}: {row['Result with Extra Accuracy']} vs {row['Result without Extra Accuracy']}", ln=True, align='L')
 
     # Save the PDF
-    pdf_filename = "ocr_results.pdf"
+    temp_dir = tempfile.mkdtemp()
+    pdf_filename = os.path.join(temp_dir, "ocr_results.pdf")
     pdf.output(pdf_filename)
     return pdf_filename
 
@@ -195,6 +196,10 @@ def run_parser(parsers):
                 st.session_state['mismatch_df'] = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
                 st.session_state['file_paths'] = file_paths
 
+                # Generate PDF and store in session state
+                pdf_filename = save_results_as_pdf(response_json_extra, response_json_no_extra, st.session_state['comparison_table'], st.session_state['mismatch_df'], file_paths)
+                st.session_state['pdf_filename'] = pdf_filename
+
                 # Display mismatched fields in a table
                 st.subheader("Mismatched Fields")
                 st.dataframe(st.session_state['mismatch_df'])
@@ -208,10 +213,9 @@ def run_parser(parsers):
                 grid_options = gb.build()
                 AgGrid(st.session_state['comparison_table'], gridOptions=grid_options, height=300, theme='streamlit', enable_enterprise_modules=True)
 
-                # Save as PDF button
-                if st.button("Save Results as PDF"):
-                    pdf_filename = save_results_as_pdf(response_json_extra, response_json_no_extra, st.session_state['comparison_table'], st.session_state['mismatch_df'], file_paths)
-                    with open(pdf_filename, "rb") as pdf_file:
+                # Download PDF button
+                if 'pdf_filename' in st.session_state:
+                    with open(st.session_state['pdf_filename'], "rb") as pdf_file:
                         PDFbyte = pdf_file.read()
                     st.download_button(label="Download Results as PDF", data=PDFbyte, file_name="ocr_results.pdf", mime="application/pdf")
 
