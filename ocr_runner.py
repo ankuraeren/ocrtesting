@@ -9,6 +9,10 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 import json
 import pandas as pd
 
+# ===========================
+# 1. Initialize session_state
+# ===========================
+
 # Initialize session_state variables
 if 'file_paths' not in st.session_state:
     st.session_state.file_paths = []
@@ -43,8 +47,10 @@ if 'csv_data' not in st.session_state:
 if 'csv_filename' not in st.session_state:
     st.session_state.csv_filename = None
 
+# ===========================
+# 2. Define Helper Functions
+# ===========================
 
-# Function to create the CSV from comparison and mismatch results
 def create_csv(comparison_table, mismatch_df, image_names):
     temp_dir = tempfile.mkdtemp()
     csv_path = os.path.join(temp_dir, "ocr_comparison_results.csv")
@@ -67,7 +73,21 @@ def create_csv(comparison_table, mismatch_df, image_names):
 
     return csv_path
 
-# Main OCR parser function
+def cleanup_temp_dirs():
+    for temp_dir in st.session_state.temp_dirs:
+        try:
+            shutil.rmtree(temp_dir)
+        except Exception as e:
+            st.warning(f"Could not remove temporary directory {temp_dir}: {e}")
+    st.session_state.temp_dirs = []
+
+import atexit
+atexit.register(cleanup_temp_dirs)
+
+# ===========================
+# 3. Define Main Function
+# ===========================
+
 def run_parser(parsers):
     st.subheader("Run OCR Parser")
     if not parsers:
@@ -327,82 +347,27 @@ def run_parser(parsers):
             else:
                 st.error("Comparison failed. One or both requests were unsuccessful.")
 
-    # After the OCR processing, display the results if they exist in session_state
-    if st.session_state.response_extra and st.session_state.response_no_extra:
-        success_extra = st.session_state.response_extra.status_code == 200
-        success_no_extra = st.session_state.response_no_extra.status_code == 200
+    # ===========================
+    # 4. Main Execution
+    # ===========================
 
-        # Display results in two columns
-        col1, col2 = st.columns(2)
+    def main():
+        # Example parsers dictionary; replace with your actual parsers
+        parsers = {
+            "Parser1": {
+                "api_key": "your_api_key_1",
+                "parser_app_id": "your_parser_app_id_1",
+                "extra_accuracy": True
+            },
+            "Parser2": {
+                "api_key": "your_api_key_2",
+                "parser_app_id": "your_parser_app_id_2",
+                "extra_accuracy": False
+            }
+            # Add more parsers as needed
+        }
 
-        if success_extra:
-            try:
-                response_json_extra = st.session_state.response_extra.json()
-                with col1:
-                    st.expander(f"Results with Extra Accuracy - ⏱ {st.session_state.time_taken_extra:.2f}s").json(response_json_extra)
-            except json.JSONDecodeError:
-                with col1:
-                    st.error("Failed to parse JSON response with Extra Accuracy.")
-        else:
-            with col1:
-                st.error(f"Request with Extra Accuracy failed. Status code: {st.session_state.response_extra.status_code}")
+        run_parser(parsers)
 
-        if success_no_extra:
-            try:
-                response_json_no_extra = st.session_state.response_no_extra.json()
-                with col2:
-                    st.expander(f"Results without Extra Accuracy - ⏱ {st.session_state.time_taken_no_extra:.2f}s").json(response_json_no_extra)
-            except json.JSONDecodeError:
-                with col2:
-                    st.error("Failed to parse JSON response without Extra Accuracy.")
-        else:
-            with col2:
-                st.error(f"Request without Extra Accuracy failed. Status code: {st.session_state.response_no_extra.status_code}")
-
-        # Display mismatched fields in a table
-        if st.session_state.mismatch_df is not None:
-            st.subheader("Mismatched Fields")
-            st.dataframe(st.session_state.mismatch_df)
-
-        # Display the comparison table using AgGrid
-        if st.session_state.comparison_table is not None:
-            st.subheader("Comparison Table")
-            gb = GridOptionsBuilder.from_dataframe(st.session_state.comparison_table)
-            gb.configure_pagination(paginationAutoPageSize=True)
-            gb.configure_side_bar()
-            gb.configure_selection('single')
-            grid_options = gb.build()
-            AgGrid(st.session_state.comparison_table, gridOptions=grid_options, height=500, theme='streamlit', enable_enterprise_modules=True)
-
-            # Display the full comparison JSON after the table
-            st.subheader("Comparison JSON")
-            st.expander("Comparison JSON").json(st.session_state.comparison_results)
-
-            # Provide download buttons
-            if st.session_state.csv_data and st.session_state.csv_filename:
-                st.download_button(
-                    label="Download Comparison and Mismatch Results as CSV",
-                    data=st.session_state.csv_data,
-                    file_name=st.session_state.csv_filename,
-                    mime="text/csv"
-                )
-
-            # Optional: Provide separate download buttons for JSON outputs
-            st.subheader("Download JSON Outputs")
-            col_json1, col_json2 = st.columns(2)
-            with col_json1:
-                if st.session_state.response_json_extra:
-                    st.download_button(
-                        label="Download Extra Accuracy JSON",
-                        data=json.dumps(st.session_state.response_json_extra, indent=2),
-                        file_name="response_extra.json",
-                        mime="application/json"
-                    )
-            with col_json2:
-                if st.session_state.response_json_no_extra:
-                    st.download_button(
-                        label="Download No Extra Accuracy JSON",
-                        data=json.dumps(st.session_state.response_json_no_extra, indent=2),
-                        file_name="response_no_extra.json",
-                        mime="application/json"
-                    )
+    if __name__ == "__main__":
+        main()
