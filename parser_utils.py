@@ -77,8 +77,6 @@ def list_parsers():
 
             # Generate a direct link to run the parser as a button
             if st.button(f"Run Parser for {parser_name}", key=f"run_{parser_name}"):
-                query_params = urlencode({'parser': parser_name, 'client': 'False'})
-                run_parser_url = f"/?{query_params}"
                 st.experimental_set_query_params(parser=parser_name, client='False')
                 st.experimental_rerun()
 
