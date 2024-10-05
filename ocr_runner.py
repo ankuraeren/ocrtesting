@@ -52,27 +52,23 @@ if 'csv_filename' not in st.session_state:
 # 2. Define Helper Functions
 # ===========================
 
-def create_csv(comparison_table, mismatch_df, image_names):
+def create_csv(main_header_df, invoice_header_df, line_items_df):
     temp_dir = tempfile.mkdtemp()
-    csv_path = os.path.join(temp_dir, "ocr_comparison_results.csv")
+    csv_path = os.path.join(temp_dir, "ocr_results.csv")
 
-    # Add image name to comparison_table
-    comparison_table = comparison_table.copy()
-    comparison_table['Image'] = ', '.join(image_names)
-    comparison_table['Record_Type'] = 'Comparison'
+    # Combine all DataFrames with appropriate labels
+    main_header_df['Record_Type'] = 'Main Header'
+    invoice_header_df['Record_Type'] = 'Invoice Header'
+    line_items_df['Record_Type'] = 'Line Item'
 
-    # Add image name to mismatch_df
-    mismatch_df = mismatch_df.copy()
-    mismatch_df['Image'] = ', '.join(image_names)
-    mismatch_df['Record_Type'] = 'Mismatch'
-
-    # Combine both DataFrames
-    combined_df = pd.concat([comparison_table, mismatch_df], ignore_index=True)
+    # Concatenate all DataFrames
+    combined_df = pd.concat([main_header_df, invoice_header_df, line_items_df], ignore_index=True)
 
     # Save to CSV
     combined_df.to_csv(csv_path, index=False)
 
     return csv_path
+
 
 def cleanup_temp_dirs():
     for temp_dir in st.session_state.temp_dirs:
@@ -91,6 +87,7 @@ atexit.register(cleanup_temp_dirs)
 
 def run_parser(parsers):
     st.subheader("Run OCR Parser")
+    
     if not parsers:
         st.info("No parsers available. Please add a parser first.")
         return
@@ -146,7 +143,7 @@ def run_parser(parsers):
     uploaded_files = st.file_uploader(
         "Choose image or PDF file(s)... (Limit 20MB per file)", 
         type=["jpg", "jpeg", "png", "pdf"], 
-        accept_multiple_files=False  # Change to True if multiple uploads are desired
+        accept_multiple_files=False
     )
 
     if uploaded_files:
@@ -155,7 +152,6 @@ def run_parser(parsers):
         else:
             try:
                 if uploaded_files.type == "application/pdf":
-                    # Handle PDF files
                     temp_dir = tempfile.mkdtemp()
                     st.session_state.temp_dirs.append(temp_dir)
                     pdf_path = os.path.join(temp_dir, uploaded_files.name)
@@ -163,13 +159,11 @@ def run_parser(parsers):
                     with open(pdf_path, "wb") as f:
                         f.write(uploaded_files.getbuffer())
 
-                    # Display PDF filename
                     st.markdown(f"**Uploaded PDF:** {uploaded_files.name}")
                     st.session_state.file_paths.append(pdf_path)
                     st.session_state.image_names.append(uploaded_files.name)
 
                 else:
-                    # Handle image files
                     image = Image.open(uploaded_files)
                     st.image(image, caption=uploaded_files.name, use_column_width=True)
                     temp_dir = tempfile.mkdtemp()
@@ -191,7 +185,6 @@ def run_parser(parsers):
 
     # Handle Refresh button
     if refresh:
-        # Clear relevant session_state variables
         st.session_state.file_paths = []
         st.session_state.temp_dirs = []
         st.session_state.image_names = []
@@ -254,130 +247,52 @@ def run_parser(parsers):
                 success_extra = response_extra.status_code == 200
                 success_no_extra = response_no_extra.status_code == 200
 
-                # Display results in two columns
-                col1, col2 = st.columns(2)
-
-                if success_extra:
+                # Store results from both extra accuracy and no extra accuracy cases
+                if success_extra and success_no_extra:
                     try:
                         response_json_extra = response_extra.json()
                         st.session_state.response_json_extra = response_json_extra
-                        with col1:
-                            st.expander(f"Results with Extra Accuracy - ⏱ {time_taken_extra:.2f}s").json(response_json_extra)
-                    except json.JSONDecodeError:
-                        with col1:
-                            st.error("Failed to parse JSON response with Extra Accuracy.")
-                else:
-                    with col1:
-                        st.error(f"Request with Extra Accuracy failed. Status code: {response_extra.status_code}")
-
-                if success_no_extra:
-                    try:
                         response_json_no_extra = response_no_extra.json()
                         st.session_state.response_json_no_extra = response_json_no_extra
-                        with col2:
-                            st.expander(f"Results without Extra Accuracy - ⏱ {time_taken_no_extra:.2f}s").json(response_json_no_extra)
+
+                        # Display the results and let user download CSV
+                        main_header = {
+                            'Invoice Number': 'INV001',  # Example, replace with actual data
+                            'Document Name': uploaded_files.name
+                        }
+                        invoice_header = {
+                            'Shipper Name': 'Acme Corp',
+                            'Biller Name': 'Global Inc',
+                            'Invoice Date': '2023-10-05',
+                            'Document Name': uploaded_files.name
+                        }
+                        line_items = [
+                            {'Item Description': 'Item 1', 'Unit Price': 100.00, 'Quantity': 2, 'Total Price': 200.00},
+                            {'Item Description': 'Item 2', 'Unit Price': 50.00, 'Quantity': 4, 'Total Price': 200.00}
+                        ]
+
+                        # Convert the data into DataFrames
+                        main_header_df = pd.DataFrame([main_header])
+                        invoice_header_df = pd.DataFrame([invoice_header])
+                        line_items_df = pd.DataFrame(line_items)
+
+                        # Generate CSV with multi-level data
+                        csv_file_path = create_csv(main_header_df, invoice_header_df, line_items_df)
+
+                        with open(csv_file_path, "rb") as csv_file:
+                            st.session_state.csv_data = csv_file.read()
+                            st.session_state.csv_filename = "ocr_results.csv"
+
+                        # Download the CSV
+                        st.download_button(
+                            label="Download Invoice Results as CSV",
+                            data=st.session_state.csv_data,
+                            file_name=st.session_state.csv_filename,
+                            mime="text/csv"
+                        )
+
                     except json.JSONDecodeError:
-                        with col2:
-                            st.error("Failed to parse JSON response without Extra Accuracy.")
-                else:
-                    with col2:
-                        st.error(f"Request without Extra Accuracy failed. Status code: {response_no_extra.status_code}")
-
-                # Generate comparison results
-                if success_extra and success_no_extra:
-                    comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
-                    st.session_state.comparison_results = comparison_results
-
-                    # Generate mismatch DataFrame
-                    mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
-                    st.session_state.mismatch_df = mismatch_df
-
-                    # Generate comparison DataFrame
-                    comparison_table = generate_comparison_df(response_json_extra, response_json_no_extra, comparison_results)
-                    st.session_state.comparison_table = comparison_table
-
-                    # Display mismatched fields in a table
-                    st.subheader("Mismatched Fields")
-                    st.dataframe(mismatch_df)
-
-                    # Display the comparison table using AgGrid
-                    st.subheader("Comparison Table")
-                    gb = GridOptionsBuilder.from_dataframe(comparison_table)
-                    gb.configure_pagination(paginationAutoPageSize=True)
-                    gb.configure_side_bar()
-                    gb.configure_selection('single')
-                    grid_options = gb.build()
-                    AgGrid(comparison_table, gridOptions=grid_options, height=500, theme='streamlit', enable_enterprise_modules=True)
-
-                    # Display the full comparison JSON after the table
-                    st.subheader("Comparison JSON")
-                    st.expander("Comparison JSON").json(comparison_results)
-
-                    # Generate the combined CSV
-                    csv_file_path = create_csv(comparison_table, mismatch_df, st.session_state.image_names)
-                    with open(csv_file_path, "rb") as csv_file:
-                        st.session_state.csv_data = csv_file.read()
-                        st.session_state.csv_filename = "ocr_comparison_results.csv"
-
-                    # Provide download buttons
-                    st.download_button(
-                        label="Download Comparison and Mismatch Results as CSV",
-                        data=st.session_state.csv_data,
-                        file_name=st.session_state.csv_filename,
-                        mime="text/csv"
-                    )
-
-                    # Optional: Provide separate download buttons for JSON outputs
-                    st.subheader("Download JSON Outputs")
-                    col_json1, col_json2 = st.columns(2)
-                    with col_json1:
-                        st.download_button(
-                            label="Download Extra Accuracy JSON",
-                            data=json.dumps(response_json_extra, indent=2),
-                            file_name="response_extra.json",
-                            mime="application/json"
-                        )
-                    with col_json2:
-                        st.download_button(
-                            label="Download No Extra Accuracy JSON",
-                            data=json.dumps(response_json_no_extra, indent=2),
-                            file_name="response_no_extra.json",
-                            mime="application/json"
-                        )
+                        st.error("Failed to parse JSON response.")
 
             else:
-                st.error("Comparison failed. One or both requests were unsuccessful.")
-
-    # ===========================
-    # 4. Define Main Execution Function
-    # ===========================
-
-    def main():
-        # Example parsers dictionary; replace with your actual parsers
-        parsers = {
-            "Parser1": {
-                "api_key": "your_api_key_1",
-                "parser_app_id": "your_parser_app_id_1",
-                "extra_accuracy": True
-            },
-            "Parser2": {
-                "api_key": "your_api_key_2",
-                "parser_app_id": "your_parser_app_id_2",
-                "extra_accuracy": False
-            }
-            # Add more parsers as needed
-        }
-
-        # Example requested_parser and parser_details; replace with your actual logic
-        # Assuming you have these variables defined somewhere
-        # For demonstration, let's set them manually
-        requested_parser = "Parser1"  # Replace with actual logic
-        parser_details = parsers.get(requested_parser, None)
-
-        if parser_details:
-            run_parser({requested_parser: parser_details})
-        else:
-            st.error("This parser no longer exists. Please contact support.")
-
-    if __name__ == "__main__":
-        main()
+                st.error("OCR processing failed. Please try again.")
