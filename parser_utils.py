@@ -75,9 +75,11 @@ def list_parsers():
             st.write(f"**Parser App ID:** {details['parser_app_id']}")
             st.write(f"**Extra Accuracy:** {'Yes' if details['extra_accuracy'] else 'No'}")
 
-            # Generate a direct link to run the parser
-            run_parser_link = f"/?parser={parser_name}&client=False"
-            st.markdown(f"[Run Parser]({run_parser_link})", unsafe_allow_html=True)
+            # Generate a direct link to run the parser as a button
+            if st.button(f"Run Parser for {parser_name}", key=f"run_{parser_name}"):
+                query_params = urlencode({'parser': parser_name, 'client': 'False'})
+                run_parser_url = f"/?{query_params}"
+                st.markdown(f"[Click here to run the parser]({run_parser_url})", unsafe_allow_html=True)
 
             # Generate dynamic parser page link button
             col1, col2 = st.columns([1, 1])
