@@ -79,7 +79,8 @@ def list_parsers():
             if st.button(f"Run Parser for {parser_name}", key=f"run_{parser_name}"):
                 query_params = urlencode({'parser': parser_name, 'client': 'False'})
                 run_parser_url = f"/?{query_params}"
-                st.markdown(f"[Click here to run the parser]({run_parser_url})", unsafe_allow_html=True)
+                st.experimental_set_query_params(parser=parser_name, client='False')
+                st.experimental_rerun()
 
             # Generate dynamic parser page link button
             col1, col2 = st.columns([1, 1])
