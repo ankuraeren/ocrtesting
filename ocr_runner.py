@@ -10,14 +10,25 @@ import json
 import pandas as pd
 
 
-# Function to create the CSV from comparison results
-def create_csv(comparison_table):
+# Function to create the CSV from comparison and mismatch results
+def create_csv(comparison_table, mismatch_df, image_names):
     temp_dir = tempfile.mkdtemp()
     csv_path = os.path.join(temp_dir, "ocr_comparison_results.csv")
 
-    # Convert the DataFrame into a CSV file
-    comparison_table.to_csv(csv_path, index=False)
-    
+    # Add image name to comparison_table
+    comparison_table['Image'] = ', '.join(image_names)
+    comparison_table['Record_Type'] = 'Comparison'
+
+    # Add image name to mismatch_df
+    mismatch_df['Image'] = ', '.join(image_names)
+    mismatch_df['Record_Type'] = 'Mismatch'
+
+    # Combine both DataFrames
+    combined_df = pd.concat([comparison_table, mismatch_df], ignore_index=True)
+
+    # Save to CSV
+    combined_df.to_csv(csv_path, index=False)
+
     return csv_path
 
 
@@ -73,12 +84,13 @@ def run_parser(parsers):
 
     file_paths = []
     temp_dirs = []
+    image_names = []  # To store image file names
 
     # File uploader
     uploaded_files = st.file_uploader(
         "Choose image or PDF file(s)... (Limit 20MB per file)", 
         type=["jpg", "jpeg", "png", "pdf"], 
-        accept_multiple_files=False
+        accept_multiple_files=False  # Change to True if multiple uploads are desired
     )
     
     if uploaded_files:
@@ -98,6 +110,7 @@ def run_parser(parsers):
                 # Display PDF filename
                 st.markdown(f"**Uploaded PDF:** {uploaded_files.name}")
                 file_paths.append(pdf_path)
+                image_names.append(uploaded_files.name)
 
             else:
                 # Handle image files
@@ -108,6 +121,7 @@ def run_parser(parsers):
                 image_path = os.path.join(temp_dir, uploaded_files.name)
                 image.save(image_path)
                 file_paths.append(image_path)
+                image_names.append(uploaded_files.name)
 
         except Exception as e:
             st.error(f"Error processing file {uploaded_files.name}: {e}")
@@ -189,14 +203,32 @@ def run_parser(parsers):
                 st.subheader("Comparison JSON")
                 st.expander("Comparison JSON").json(comparison_results)
 
-                # Add a download button for the generated CSV
-                csv_file_path = create_csv(comparison_table)
+                # Generate the combined CSV
+                csv_file_path = create_csv(comparison_table, mismatch_df, image_names)
                 with open(csv_file_path, "rb") as csv_file:
                     st.download_button(
-                        label="Download Comparison Results as CSV",
+                        label="Download Comparison and Mismatch Results as CSV",
                         data=csv_file,
                         file_name="ocr_comparison_results.csv",
                         mime="text/csv"
+                    )
+
+                # Optional: Provide separate download buttons for JSON outputs
+                st.subheader("Download JSON Outputs")
+                col_json1, col_json2 = st.columns(2)
+                with col_json1:
+                    st.download_button(
+                        label="Download Extra Accuracy JSON",
+                        data=json.dumps(response_json_extra, indent=2),
+                        file_name="response_extra.json",
+                        mime="application/json"
+                    )
+                with col_json2:
+                    st.download_button(
+                        label="Download No Extra Accuracy JSON",
+                        data=json.dumps(response_json_no_extra, indent=2),
+                        file_name="response_no_extra.json",
+                        mime="application/json"
                     )
 
             else:
