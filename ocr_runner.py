@@ -4,73 +4,77 @@ import shutil
 import streamlit as st
 from PIL import Image
 from PyPDF2 import PdfReader
-from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
+from ocr_utils import send_request
+from parser_utils import parse_comparison_results
 from st_aggrid import AgGrid, GridOptionsBuilder
 import json
 import pandas as pd
 import atexit
 
 # ===========================
-# 1. Initialize session_state
+# 1. Define Helper Functions
 # ===========================
 
-# Initialize session_state variables
-if 'file_paths' not in st.session_state:
-    st.session_state.file_paths = []
-if 'temp_dirs' not in st.session_state:
-    st.session_state.temp_dirs = []
-if 'image_names' not in st.session_state:
-    st.session_state.image_names = []
-if 'response_extra' not in st.session_state:
-    st.session_state.response_extra = None
-if 'response_no_extra' not in st.session_state:
-    st.session_state.response_no_extra = None
-if 'time_taken_extra' not in st.session_state:
-    st.session_state.time_taken_extra = None
-if 'time_taken_no_extra' not in st.session_state:
-    st.session_state.time_taken_no_extra = None
-if 'comparison_results' not in st.session_state:
-    st.session_state.comparison_results = None
-if 'comparison_table' not in st.session_state:
-    st.session_state.comparison_table = None
-if 'mismatch_df' not in st.session_state:
-    st.session_state.mismatch_df = None
-if 'parser_selected' not in st.session_state:
-    st.session_state.parser_selected = None
-if 'parser_info' not in st.session_state:
-    st.session_state.parser_info = None
-if 'response_json_extra' not in st.session_state:
-    st.session_state.response_json_extra = None
-if 'response_json_no_extra' not in st.session_state:
-    st.session_state.response_json_no_extra = None
-if 'csv_data' not in st.session_state:
-    st.session_state.csv_data = None
-if 'csv_filename' not in st.session_state:
-    st.session_state.csv_filename = None
+def initialize_session_state():
+    """
+    Initialize all required session_state variables.
+    """
+    if 'file_paths' not in st.session_state:
+        st.session_state.file_paths = []
+    if 'temp_dirs' not in st.session_state:
+        st.session_state.temp_dirs = []
+    if 'image_names' not in st.session_state:
+        st.session_state.image_names = []
+    if 'response_extra' not in st.session_state:
+        st.session_state.response_extra = None
+    if 'response_no_extra' not in st.session_state:
+        st.session_state.response_no_extra = None
+    if 'time_taken_extra' not in st.session_state:
+        st.session_state.time_taken_extra = None
+    if 'time_taken_no_extra' not in st.session_state:
+        st.session_state.time_taken_no_extra = None
+    if 'comparison_results' not in st.session_state:
+        st.session_state.comparison_results = None
+    if 'comparison_table' not in st.session_state:
+        st.session_state.comparison_table = None
+    if 'mismatch_df' not in st.session_state:
+        st.session_state.mismatch_df = None
+    if 'parser_selected' not in st.session_state:
+        st.session_state.parser_selected = None
+    if 'parser_info' not in st.session_state:
+        st.session_state.parser_info = None
+    if 'response_json_extra' not in st.session_state:
+        st.session_state.response_json_extra = None
+    if 'response_json_no_extra' not in st.session_state:
+        st.session_state.response_json_no_extra = None
+    if 'csv_data' not in st.session_state:
+        st.session_state.csv_data = None
+    if 'csv_filename' not in st.session_state:
+        st.session_state.csv_filename = None
+    if 'compiled_results' not in st.session_state:
+        st.session_state.compiled_results = pd.DataFrame(columns=[
+            'Document Name', 'Record_Type', 'Invoice Number', 'Shipper Name', 'Biller Name',
+            'Invoice Date', 'Item Description', 'Unit Price', 'Quantity', 'Total Price',
+            'Ledger ID', 'Account Name', 'Date', 'Transaction Description', 'Amount', 'Balance',
+            'Name', 'Company', 'Position', 'Phone', 'Email'
+        ])
 
-# ===========================
-# 2. Define Helper Functions
-# ===========================
-
-def create_csv(main_header_df, invoice_header_df, line_items_df):
+def create_csv(compiled_results):
+    """
+    Save the compiled_results DataFrame to a CSV file and return its path.
+    """
     temp_dir = tempfile.mkdtemp()
     csv_path = os.path.join(temp_dir, "ocr_results.csv")
 
-    # Combine all DataFrames with appropriate labels
-    main_header_df['Record_Type'] = 'Main Header'
-    invoice_header_df['Record_Type'] = 'Invoice Header'
-    line_items_df['Record_Type'] = 'Line Item'
-
-    # Concatenate all DataFrames
-    combined_df = pd.concat([main_header_df, invoice_header_df, line_items_df], ignore_index=True)
-
     # Save to CSV
-    combined_df.to_csv(csv_path, index=False)
+    compiled_results.to_csv(csv_path, index=False)
 
     return csv_path
 
-
 def cleanup_temp_dirs():
+    """
+    Cleanup all temporary directories stored in session_state.temp_dirs.
+    """
     for temp_dir in st.session_state.temp_dirs:
         try:
             shutil.rmtree(temp_dir)
@@ -82,12 +86,17 @@ def cleanup_temp_dirs():
 atexit.register(cleanup_temp_dirs)
 
 # ===========================
-# 3. Define Main OCR Parser Function
+# 2. Define Main OCR Parser Function
 # ===========================
 
 def run_parser(parsers):
+    """
+    Main function to handle OCR parsing, data extraction, and CSV generation.
+    """
+    # Initialize session_state at the start
+    initialize_session_state()
+
     st.subheader("Run OCR Parser")
-    
     if not parsers:
         st.info("No parsers available. Please add a parser first.")
         return
@@ -140,41 +149,43 @@ def run_parser(parsers):
     st.write(f"**Extra Accuracy Required:** {'Yes' if parser_info['extra_accuracy'] else 'No'}")
 
     # File uploader
-    uploaded_files = st.file_uploader(
-        "Choose image or PDF file(s)... (Limit 20MB per file)", 
+    uploaded_file = st.file_uploader(
+        "Choose an image or PDF file... (Limit 20MB per file)", 
         type=["jpg", "jpeg", "png", "pdf"], 
         accept_multiple_files=False
     )
 
-    if uploaded_files:
-        if uploaded_files.size > 20 * 1024 * 1024:  # 20 MB limit
+    if uploaded_file:
+        if uploaded_file.size > 20 * 1024 * 1024:  # 20 MB limit
             st.error("File size exceeds the 20 MB limit. Please upload a smaller file.")
         else:
             try:
-                if uploaded_files.type == "application/pdf":
+                if uploaded_file.type == "application/pdf":
+                    # Handle PDF files
                     temp_dir = tempfile.mkdtemp()
                     st.session_state.temp_dirs.append(temp_dir)
-                    pdf_path = os.path.join(temp_dir, uploaded_files.name)
+                    pdf_path = os.path.join(temp_dir, uploaded_file.name)
 
                     with open(pdf_path, "wb") as f:
-                        f.write(uploaded_files.getbuffer())
+                        f.write(uploaded_file.getbuffer())
 
-                    st.markdown(f"**Uploaded PDF:** {uploaded_files.name}")
+                    st.markdown(f"**Uploaded PDF:** {uploaded_file.name}")
                     st.session_state.file_paths.append(pdf_path)
-                    st.session_state.image_names.append(uploaded_files.name)
+                    st.session_state.image_names.append(uploaded_file.name)
 
                 else:
-                    image = Image.open(uploaded_files)
-                    st.image(image, caption=uploaded_files.name, use_column_width=True)
+                    # Handle image files
+                    image = Image.open(uploaded_file)
+                    st.image(image, caption=uploaded_file.name, use_column_width=True)
                     temp_dir = tempfile.mkdtemp()
                     st.session_state.temp_dirs.append(temp_dir)
-                    image_path = os.path.join(temp_dir, uploaded_files.name)
+                    image_path = os.path.join(temp_dir, uploaded_file.name)
                     image.save(image_path)
                     st.session_state.file_paths.append(image_path)
-                    st.session_state.image_names.append(uploaded_files.name)
+                    st.session_state.image_names.append(uploaded_file.name)
 
             except Exception as e:
-                st.error(f"Error processing file {uploaded_files.name}: {e}")
+                st.error(f"Error processing file {uploaded_file.name}: {e}")
 
     # "Run OCR" and "Refresh" buttons
     col_run, col_refresh = st.columns([3, 1])
@@ -185,6 +196,7 @@ def run_parser(parsers):
 
     # Handle Refresh button
     if refresh:
+        # Clear relevant session_state variables
         st.session_state.file_paths = []
         st.session_state.temp_dirs = []
         st.session_state.image_names = []
@@ -201,6 +213,12 @@ def run_parser(parsers):
         st.session_state.response_json_no_extra = None
         st.session_state.csv_data = None
         st.session_state.csv_filename = None
+        st.session_state.compiled_results = pd.DataFrame(columns=[
+            'Document Name', 'Record_Type', 'Invoice Number', 'Shipper Name', 'Biller Name',
+            'Invoice Date', 'Item Description', 'Unit Price', 'Quantity', 'Total Price',
+            'Ledger ID', 'Account Name', 'Date', 'Transaction Description', 'Amount', 'Balance',
+            'Name', 'Company', 'Position', 'Phone', 'Email'
+        ])
         st.experimental_rerun()
 
     # Run OCR processing
@@ -226,7 +244,7 @@ def run_parser(parsers):
                     st.session_state.file_paths, 
                     headers, 
                     form_data, 
-                    True, 
+                    st.session_state.parser_info['extra_accuracy'], 
                     API_ENDPOINT
                 )
                 response_no_extra, time_taken_no_extra = send_request(
@@ -247,52 +265,97 @@ def run_parser(parsers):
                 success_extra = response_extra.status_code == 200
                 success_no_extra = response_no_extra.status_code == 200
 
-                # Store results from both extra accuracy and no extra accuracy cases
-                if success_extra and success_no_extra:
+                # Display results in two columns
+                col1, col2 = st.columns(2)
+
+                if success_extra:
                     try:
                         response_json_extra = response_extra.json()
                         st.session_state.response_json_extra = response_json_extra
+                        with col1:
+                            st.expander(f"Results with Extra Accuracy - ⏱ {time_taken_extra:.2f}s").json(response_json_extra)
+                    except json.JSONDecodeError:
+                        with col1:
+                            st.error("Failed to parse JSON response with Extra Accuracy.")
+                else:
+                    with col1:
+                        st.error(f"Request with Extra Accuracy failed. Status code: {response_extra.status_code}")
+
+                if success_no_extra:
+                    try:
                         response_json_no_extra = response_no_extra.json()
                         st.session_state.response_json_no_extra = response_json_no_extra
+                        with col2:
+                            st.expander(f"Results without Extra Accuracy - ⏱ {time_taken_no_extra:.2f}s").json(response_json_no_extra)
+                    except json.JSONDecodeError:
+                        with col2:
+                            st.error("Failed to parse JSON response without Extra Accuracy.")
+                else:
+                    with col2:
+                        st.error(f"Request without Extra Accuracy failed. Status code: {response_no_extra.status_code}")
 
-                        # Display the results and let user download CSV
-                        main_header = {
-                            'Invoice Number': 'INV001',  # Example, replace with actual data
-                            'Document Name': uploaded_files.name
-                        }
-                        invoice_header = {
-                            'Shipper Name': 'Acme Corp',
-                            'Biller Name': 'Global Inc',
-                            'Invoice Date': '2023-10-05',
-                            'Document Name': uploaded_files.name
-                        }
-                        line_items = [
-                            {'Item Description': 'Item 1', 'Unit Price': 100.00, 'Quantity': 2, 'Total Price': 200.00},
-                            {'Item Description': 'Item 2', 'Unit Price': 50.00, 'Quantity': 4, 'Total Price': 200.00}
-                        ]
+                # Generate comparison results
+                if success_extra and success_no_extra:
+                    comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
+                    st.session_state.comparison_results = comparison_results
 
-                        # Convert the data into DataFrames
-                        main_header_df = pd.DataFrame([main_header])
-                        invoice_header_df = pd.DataFrame([invoice_header])
-                        line_items_df = pd.DataFrame(line_items)
+                    # Generate mismatch DataFrame
+                    mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
+                    st.session_state.mismatch_df = mismatch_df
 
-                        # Generate CSV with multi-level data
-                        csv_file_path = create_csv(main_header_df, invoice_header_df, line_items_df)
+                    # Generate comparison DataFrame
+                    comparison_table = generate_comparison_df(response_json_extra, response_json_no_extra, comparison_results)
+                    st.session_state.comparison_table = comparison_table
 
+                    # Display mismatched fields in a table
+                    st.subheader("Mismatched Fields")
+                    st.dataframe(mismatch_df)
+
+                    # Display the comparison table using AgGrid
+                    st.subheader("Comparison Table")
+                    gb = GridOptionsBuilder.from_dataframe(comparison_table)
+                    gb.configure_pagination(paginationAutoPageSize=True)
+                    gb.configure_side_bar()
+                    gb.configure_selection('single')
+                    grid_options = gb.build()
+                    AgGrid(comparison_table, gridOptions=grid_options, height=500, theme='streamlit', enable_enterprise_modules=True)
+
+                    # Display the full comparison JSON after the table
+                    st.subheader("Comparison JSON")
+                    st.expander("Comparison JSON").json(comparison_results)
+
+                    # Extract parser type from parser_info
+                    parser_type = st.session_state.parser_info.get('type', 'unknown')
+
+                    # Parse comparison results based on parser type
+                    parsed_df = parse_comparison_results(parser_type, comparison_results)
+
+                    if not parsed_df.empty:
+                        # Append parsed data to compiled_results
+                        st.session_state.compiled_results = pd.concat(
+                            [st.session_state.compiled_results, parsed_df],
+                            ignore_index=True
+                        )
+
+                        # Show cumulative results so far
+                        st.subheader("Cumulative Results")
+                        st.dataframe(st.session_state.compiled_results)
+
+                        # Generate and provide the CSV download
+                        csv_file_path = create_csv(st.session_state.compiled_results)
                         with open(csv_file_path, "rb") as csv_file:
                             st.session_state.csv_data = csv_file.read()
                             st.session_state.csv_filename = "ocr_results.csv"
 
-                        # Download the CSV
                         st.download_button(
-                            label="Download Invoice Results as CSV",
+                            label="Download OCR Results as CSV",
                             data=st.session_state.csv_data,
                             file_name=st.session_state.csv_filename,
                             mime="text/csv"
                         )
-
-                    except json.JSONDecodeError:
-                        st.error("Failed to parse JSON response.")
-
+                    else:
+                        st.error("Parsed DataFrame is empty. Check parser logic.")
+                else:
+                    st.error("Comparison failed. One or both requests were unsuccessful.")
             else:
                 st.error("OCR processing failed. Please try again.")
