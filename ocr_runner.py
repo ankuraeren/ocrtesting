@@ -11,6 +11,7 @@ from ocr_utils import send_request, generate_comparison_results, generate_compar
 from st_aggrid import AgGrid, GridOptionsBuilder
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 from wordcloud import WordCloud
 
 # Main OCR parser function
@@ -189,9 +190,8 @@ def run_parser(parsers):
                 })
 
                 fig, ax = plt.subplots(figsize=(5, 3))
-                ax.bar(match_data['Fields'], match_data['Count'], color=['#4caf50', '#f44336'])
+                sns.barplot(x='Fields', y='Count', data=match_data, palette='Set2', ax=ax)
                 ax.set_title('Matched vs. Mismatched Fields')
-                ax.set_ylabel('Count')
                 st.pyplot(fig)
 
                 # Processing Time Comparison
@@ -202,9 +202,8 @@ def run_parser(parsers):
                 })
 
                 fig, ax = plt.subplots(figsize=(5, 3))
-                ax.bar(time_data['Method'], time_data['Time (s)'], color=['#2196f3', '#ff9800'])
+                sns.barplot(x='Method', y='Time (s)', data=time_data, palette='Set1', ax=ax)
                 ax.set_title('Processing Time Comparison')
-                ax.set_ylabel('Time (s)')
                 st.pyplot(fig)
 
                 # Summary Metrics
@@ -231,7 +230,7 @@ def run_parser(parsers):
                 st.subheader("Field Match Percentage")
                 match_percentage = (match_count / len(comparison_results)) * 100
                 fig, ax = plt.subplots(figsize=(5, 3))
-                ax.bar(['Matched', 'Mismatched'], [match_percentage, 100 - match_percentage], color=['#4caf50', '#f44336'])
+                sns.barplot(x=['Matched', 'Mismatched'], y=[match_percentage, 100 - match_percentage], palette='cool', ax=ax)
                 ax.set_ylabel('Percentage (%)')
                 ax.set_title('Field Match Percentage')
                 st.pyplot(fig)
