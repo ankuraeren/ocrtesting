@@ -3,8 +3,8 @@ import base64
 import requests
 import tempfile
 import logging
-import json
 import streamlit as st
+from urllib.parse import quote
 
 LOCAL_PARSERS_FILE = os.path.join(tempfile.gettempdir(), 'parsers.json')
 
@@ -25,14 +25,12 @@ def download_parsers_from_github():
     except Exception as e:
         st.error(f"Error: {e}")
 
-
 def save_parsers():
     try:
         with open(LOCAL_PARSERS_FILE, 'w') as f:
             json.dump(st.session_state['parsers'], f, indent=4)
     except Exception as e:
         st.error(f"Error: {e}")
-
 
 def add_new_parser():
     st.subheader("Add a New Parser")
@@ -61,53 +59,37 @@ def add_new_parser():
                 save_parsers()
                 st.success("The parser has been added successfully.")
 
-
 def list_parsers():
     st.subheader("List of All Parsers")
     if not st.session_state['parsers']:
         st.info("No parsers available. Please add a parser first.")
         return
 
+    # Count parser_app_id occurrences for dynamic numbering
+    app_id_count = {}
     for parser_name, details in st.session_state['parsers'].items():
-        # Generate a unique URL for each parser for the client
-        client_url = f"{st.get_url()}?parser={parser_name}&client=true"
+        app_id = details['parser_app_id']
+        if app_id in app_id_count:
+            app_id_count[app_id] += 1
+        else:
+            app_id_count[app_id] = 1
 
+    # Iterate over the parsers and display details
+    for parser_name, details in st.session_state['parsers'].items():
         with st.expander(parser_name):
-            # Show only the "Run Parser" option for clients
-            is_client = st.experimental_get_query_params().get("client", ["false"])[0].lower() == "true"
+            st.write(f"**API Key:** {details['api_key']}")
+            st.write(f"**Parser App ID:** {details['parser_app_id']}")
+            st.write(f"**Extra Accuracy:** {'Yes' if details['extra_accuracy'] else 'No'}")
 
-            if is_client:
-                st.write(f"**Parser App ID:** {details['parser_app_id']}")
-                st.write(f"**Extra Accuracy Required:** {'Yes' if details['extra_accuracy'] else 'No'}")
-                if st.button("Run Parser"):
-                    run_parser(details)  # This should be the function to run the parser for clients
-            else:
-                # Internal Team View (with more options)
-                st.write(f"**API Key:** {details['api_key']}")
-                st.write(f"**Parser App ID:** {details['parser_app_id']}")
-                st.write(f"**Extra Accuracy:** {'Yes' if details['extra_accuracy'] else 'No'}")
-                st.write(f"**Expected Response:**")
-                if details['expected_response']:
-                    try:
-                        st.json(json.loads(details['expected_response']))
-                    except Exception:
-                        st.text(details['expected_response'])
-                st.write(f"**Sample CURL Request:**")
-                if details['sample_curl']:
-                    st.code(details['sample_curl'], language='bash')
+            app_id_num = app_id_count[details['parser_app_id']]  # Get the number associated with parser_app_id
+            parser_page_link = f"https://ocrtesting-csxcl7uybqbmwards96kjo.streamlit.app/?parser={quote(parser_name)}&client=true&id={app_id_num}"
 
-                # Show delete button for internal users
-                if st.button(f"Delete {parser_name}", key=f"delete_{parser_name}"):
-                    del st.session_state['parsers'][parser_name]
-                    save_parsers()
-                    st.success(f"Parser '{parser_name}' has been deleted.")
-            
-            # Display the unique URL to share with clients
-            st.write(f"[Shareable Client Link]({client_url})")
-
-
-def run_parser(details):
-    # Add your logic to run the parser here
-    st.write("Running parser...")
-    # For the sake of this example, let's just display the details:
-    st.write(details)
+            # Generate and display link button
+            if st.button(f"Generate Parser Page for {parser_name}", key=f"generate_{parser_name}"):
+                st.write(f"**Parser Page Link:** [Click Here]({parser_page_link})")
+                
+            # Add Delete button
+            if st.button(f"Delete {parser_name}", key=f"delete_{parser_name}"):
+                del st.session_state['parsers'][parser_name]
+                save_parsers()
+                st.success(f"Parser '{parser_name}' has been deleted.")
