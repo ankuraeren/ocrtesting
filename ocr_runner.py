@@ -10,6 +10,9 @@ from PyPDF2 import PdfReader
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from st_aggrid import AgGrid, GridOptionsBuilder
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from wordcloud import WordCloud
 
 # Main OCR parser function
 def run_parser(parsers):
@@ -185,7 +188,11 @@ def run_parser(parsers):
                     'Fields': ['Matched', 'Mismatched'],
                     'Count': [match_count, mismatch_count]
                 })
-                st.bar_chart(match_data.set_index('Fields'))
+
+                fig, ax = plt.subplots(figsize=(5, 3))
+                sns.barplot(x='Fields', y='Count', data=match_data, palette='Set2', ax=ax)
+                ax.set_title('Matched vs. Mismatched Fields')
+                st.pyplot(fig)
 
                 # Processing Time Comparison
                 st.subheader("Processing Time Comparison")
@@ -193,29 +200,40 @@ def run_parser(parsers):
                     'Method': ['With Extra Accuracy', 'Without Extra Accuracy'],
                     'Time (s)': [time_taken_extra, time_taken_no_extra]
                 })
-                st.bar_chart(time_data.set_index('Method'))
+
+                fig, ax = plt.subplots(figsize=(5, 3))
+                sns.barplot(x='Method', y='Time (s)', data=time_data, palette='Set1', ax=ax)
+                ax.set_title('Processing Time Comparison')
+                st.pyplot(fig)
 
                 # Summary Metrics
                 st.subheader("Summary Metrics")
-                st.metric(label="Total Fields Extracted", value=len(comparison_results))
-                st.metric(label="Matched Fields", value=match_count)
-                st.metric(label="Mismatched Fields", value=mismatch_count)
+                col3, col4, col5 = st.columns(3)
+                col3.metric(label="Total Fields Extracted", value=len(comparison_results))
+                col4.metric(label="Matched Fields", value=match_count)
+                col5.metric(label="Mismatched Fields", value=mismatch_count)
 
                 # Word Cloud (if applicable)
                 try:
-                    from wordcloud import WordCloud
-                    import matplotlib.pyplot as plt
-
                     all_text = " ".join(flatten_json(response_json_extra)[0].values())
                     wordcloud = WordCloud(width=800, height=400, background_color='white').generate(all_text)
 
                     st.subheader("Word Cloud of Extracted Text")
-                    fig, ax = plt.subplots()
+                    fig, ax = plt.subplots(figsize=(5, 3))
                     ax.imshow(wordcloud, interpolation='bilinear')
                     ax.axis('off')
                     st.pyplot(fig)
                 except Exception as e:
                     st.warning(f"Could not generate word cloud: {e}")
+
+                # Additional analytics - Field Match Percentage
+                st.subheader("Field Match Percentage")
+                match_percentage = (match_count / len(comparison_results)) * 100
+                fig, ax = plt.subplots(figsize=(5, 3))
+                sns.barplot(x=['Matched', 'Mismatched'], y=[match_percentage, 100 - match_percentage], palette='cool', ax=ax)
+                ax.set_ylabel('Percentage (%)')
+                ax.set_title('Field Match Percentage')
+                st.pyplot(fig)
 
                 # Display the full comparison JSON after the table
                 st.subheader("Comparison JSON")
