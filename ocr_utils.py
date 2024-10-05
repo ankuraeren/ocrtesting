@@ -1,3 +1,5 @@
+### Updated ocr_utils.py ###
+
 import os
 import json
 import requests
@@ -46,9 +48,6 @@ def generate_comparison_results(json1, json2):
 
 # Function to generate a DataFrame for the comparison
 def generate_comparison_df(json1, json2, comparison_results):
-    """
-    Generate a DataFrame comparing two JSON objects.
-    """
     flat_json1, order1 = flatten_json(json1)
     flat_json2, _ = flatten_json(json2)
 
@@ -64,9 +63,6 @@ def generate_comparison_df(json1, json2, comparison_results):
 
 # Function to generate a DataFrame with only mismatched fields
 def generate_mismatch_df(json1, json2, comparison_results):
-    """
-    Generate a DataFrame showing only the mismatched fields between the two JSONs.
-    """
     flat_json1, order1 = flatten_json(json1)
     flat_json2, _ = flatten_json(json2)
 
@@ -121,3 +117,4 @@ def send_request(image_paths, headers, form_data, extra_accuracy, API_ENDPOINT):
         # Cleanup files
         for _, file_tuple in files:
             file_tuple[1].close()
+
