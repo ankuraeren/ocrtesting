@@ -1,3 +1,4 @@
+
 ### Updated ocr_runner.py ###
 
 import os
@@ -160,12 +161,4 @@ def run_parser(parsers):
                     temp_dirs.append(temp_dir)
                     image_path = os.path.join(temp_dir, uploaded_file.name)
                     image.save(image_path)
-                    file_paths.append(image_path)
-
-            except Exception as e:
-                st.error(f"Error processing file {uploaded_file.name}: {e}")
-
-    # Run OCR button
-    if st.button("Run OCR"):
-        if not file_paths:
-            st.error("Please provide at least one image
+                    file_paths.append(image_path
