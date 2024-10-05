@@ -3,6 +3,7 @@ import base64
 import requests
 import tempfile
 import logging
+import json
 import streamlit as st
 
 LOCAL_PARSERS_FILE = os.path.join(tempfile.gettempdir(), 'parsers.json')
@@ -25,14 +26,13 @@ def download_parsers_from_github():
         st.error(f"Error: {e}")
 
 
-
-
 def save_parsers():
     try:
         with open(LOCAL_PARSERS_FILE, 'w') as f:
             json.dump(st.session_state['parsers'], f, indent=4)
     except Exception as e:
         st.error(f"Error: {e}")
+
 
 def add_new_parser():
     st.subheader("Add a New Parser")
@@ -61,6 +61,7 @@ def add_new_parser():
                 save_parsers()
                 st.success("The parser has been added successfully.")
 
+
 def list_parsers():
     st.subheader("List of All Parsers")
     if not st.session_state['parsers']:
@@ -68,20 +69,45 @@ def list_parsers():
         return
 
     for parser_name, details in st.session_state['parsers'].items():
+        # Generate a unique URL for each parser for the client
+        client_url = f"{st.get_url()}?parser={parser_name}&client=true"
+
         with st.expander(parser_name):
-            st.write(f"**API Key:** {details['api_key']}")
-            st.write(f"**Parser App ID:** {details['parser_app_id']}")
-            st.write(f"**Extra Accuracy:** {'Yes' if details['extra_accuracy'] else 'No'}")
-            st.write(f"**Expected Response:**")
-            if details['expected_response']:
-                try:
-                    st.json(json.loads(details['expected_response']))
-                except Exception:
-                    st.text(details['expected_response'])
-            st.write(f"**Sample CURL Request:**")
-            if details['sample_curl']:
-                st.code(details['sample_curl'], language='bash')
-            if st.button(f"Delete {parser_name}", key=f"delete_{parser_name}"):
-                del st.session_state['parsers'][parser_name]
-                save_parsers()
-                st.success(f"Parser '{parser_name}' has been deleted.")
+            # Show only the "Run Parser" option for clients
+            is_client = st.experimental_get_query_params().get("client", ["false"])[0].lower() == "true"
+
+            if is_client:
+                st.write(f"**Parser App ID:** {details['parser_app_id']}")
+                st.write(f"**Extra Accuracy Required:** {'Yes' if details['extra_accuracy'] else 'No'}")
+                if st.button("Run Parser"):
+                    run_parser(details)  # This should be the function to run the parser for clients
+            else:
+                # Internal Team View (with more options)
+                st.write(f"**API Key:** {details['api_key']}")
+                st.write(f"**Parser App ID:** {details['parser_app_id']}")
+                st.write(f"**Extra Accuracy:** {'Yes' if details['extra_accuracy'] else 'No'}")
+                st.write(f"**Expected Response:**")
+                if details['expected_response']:
+                    try:
+                        st.json(json.loads(details['expected_response']))
+                    except Exception:
+                        st.text(details['expected_response'])
+                st.write(f"**Sample CURL Request:**")
+                if details['sample_curl']:
+                    st.code(details['sample_curl'], language='bash')
+
+                # Show delete button for internal users
+                if st.button(f"Delete {parser_name}", key=f"delete_{parser_name}"):
+                    del st.session_state['parsers'][parser_name]
+                    save_parsers()
+                    st.success(f"Parser '{parser_name}' has been deleted.")
+            
+            # Display the unique URL to share with clients
+            st.write(f"[Shareable Client Link]({client_url})")
+
+
+def run_parser(details):
+    # Add your logic to run the parser here
+    st.write("Running parser...")
+    # For the sake of this example, let's just display the details:
+    st.write(details)
