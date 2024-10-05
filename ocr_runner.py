@@ -11,6 +11,7 @@ from ocr_utils import send_request, generate_comparison_results, generate_compar
 from st_aggrid import AgGrid, GridOptionsBuilder
 import pandas as pd
 from fpdf import FPDF
+import base64
 
 # Function to save results as PDF
 def save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_table, mismatch_df, file_paths):
@@ -59,7 +60,17 @@ def save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_
         pdf.cell(200, 10, txt=f"{row['Field']}: {row['Result with Extra Accuracy']} vs {row['Result without Extra Accuracy']}", ln=True, align='L')
 
     # Save the PDF
-    pdf.output("ocr_results.pdf")
+    pdf_filename = "ocr_results.pdf"
+    pdf.output(pdf_filename)
+    return pdf_filename
+
+# Function to create a download link for the PDF
+def create_download_link(file_path, link_text):
+    with open(file_path, "rb") as f:
+        pdf_data = f.read()
+    b64 = base64.b64encode(pdf_data).decode()
+    href = f'<a href="data:application/octet-stream;base64,{b64}" download="{file_path}">{link_text}</a>'
+    return href
 
 # Main OCR parser function
 def run_parser(parsers):
@@ -201,7 +212,8 @@ def run_parser(parsers):
 
                 # Save as PDF button
                 if st.button("Save Results as PDF"):
-                    save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_table, mismatch_df, file_paths)
+                    pdf_filename = save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_table, mismatch_df, file_paths)
+                    st.markdown(create_download_link(pdf_filename, "Click here to download the PDF"), unsafe_allow_html=True)
                     st.success("Results saved as ocr_results.pdf")
             else:
                 st.error("Comparison failed. One or both requests were unsuccessful.")
