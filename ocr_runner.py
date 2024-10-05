@@ -1,3 +1,4 @@
+
 ### Updated ocr_runner.py ###
 
 import os
@@ -8,7 +9,6 @@ from PIL import Image
 from PyPDF2 import PdfReader
 from ocr_utils import send_request, generate_comparison_results, generate_comparison_df, generate_mismatch_df
 from st_aggrid import AgGrid, GridOptionsBuilder
-import plotly.express as px
 import pandas as pd
 
 # Main OCR parser function
@@ -185,7 +185,7 @@ def run_parser(parsers):
                     'Fields': ['Matched', 'Mismatched'],
                     'Count': [match_count, mismatch_count]
                 })
-                st.plotly_chart(px.pie(match_data, values='Count', names='Fields', title='Matched vs. Mismatched Fields'))
+                st.bar_chart(match_data.set_index('Fields'))
 
                 # Processing Time Comparison
                 st.subheader("Processing Time Comparison")
@@ -193,7 +193,7 @@ def run_parser(parsers):
                     'Method': ['With Extra Accuracy', 'Without Extra Accuracy'],
                     'Time (s)': [time_taken_extra, time_taken_no_extra]
                 })
-                st.plotly_chart(px.bar(time_data, x='Method', y='Time (s)', title='Processing Time Comparison', text='Time (s)'))
+                st.bar_chart(time_data.set_index('Method'))
 
                 # Summary Metrics
                 st.subheader("Summary Metrics")
