@@ -1,6 +1,3 @@
-
-### Updated ocr_runner.py ###
-
 import os
 import tempfile
 import shutil
@@ -161,4 +158,69 @@ def run_parser(parsers):
                     temp_dirs.append(temp_dir)
                     image_path = os.path.join(temp_dir, uploaded_file.name)
                     image.save(image_path)
-                    file_paths.append(image_path
+                    file_paths.append(image_path)
+
+            except Exception as e:
+                st.error(f"Error processing file {uploaded_file.name}: {e}")
+
+    # Run OCR button
+    if st.button("Run OCR"):
+        if not file_paths:
+            st.error("Please provide at least one image or PDF.")
+            return
+
+        headers = {
+            'x-api-key': parser_info['api_key'],
+        }
+
+        form_data = {
+            'parserApp': parser_info['parser_app_id'],
+            'user_ip': '127.0.0.1',
+            'location': 'delhi',
+            'user_agent': 'Dummy-device-testing11',
+        }
+
+        API_ENDPOINT = st.secrets["api"]["endpoint"]
+
+        with st.spinner("Processing OCR..."):
+            response_extra, time_taken_extra = send_request(file_paths, headers, form_data, True, API_ENDPOINT)
+            response_no_extra, time_taken_no_extra = send_request(file_paths, headers, form_data, False, API_ENDPOINT)
+
+        # Cleanup temporary directories
+        for temp_dir in temp_dirs:
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception as e:
+                st.warning(f"Could not remove temporary directory {temp_dir}: {e}")
+
+        if response_extra and response_no_extra:
+            success_extra = response_extra.status_code == 200
+            success_no_extra = response_no_extra.status_code == 200
+
+            if success_extra and success_no_extra:
+                response_json_extra = response_extra.json()
+                response_json_no_extra = response_no_extra.json()
+                comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
+
+                # Display mismatched fields in a table
+                st.subheader("Mismatched Fields")
+                mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
+                st.dataframe(mismatch_df)
+
+                # Display the comparison table
+                st.subheader("Comparison Table")
+                comparison_table = generate_comparison_df(response_json_extra, response_json_no_extra, comparison_results)
+                gb = GridOptionsBuilder.from_dataframe(comparison_table)
+                gb.configure_pagination(paginationAutoPageSize=True)
+                gb.configure_side_bar()
+                gb.configure_selection('single')
+                grid_options = gb.build()
+                AgGrid(comparison_table, gridOptions=grid_options, height=300, theme='streamlit', enable_enterprise_modules=True)
+
+                # Save as PDF button
+                if st.button("Save Results as PDF"):
+                    pdf_filename = save_results_as_pdf(response_json_extra, response_json_no_extra, comparison_table, mismatch_df, file_paths)
+                    st.markdown(create_download_link(pdf_filename, "Click here to download the PDF"), unsafe_allow_html=True)
+                    st.success("Results saved as ocr_results.pdf")
+            else:
+                st.error("Comparison failed. One or both requests were unsuccessful.")
