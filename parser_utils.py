@@ -76,13 +76,17 @@ def list_parsers():
             st.markdown(f"[Run Parser]({run_parser_link})")
 
             # Generate dynamic parser page link button
-            if st.button(f"Generate Parser Page for {parser_name}", key=f"generate_{parser_name}"):
-                query_params = urlencode({'parser': parser_name, 'client': 'True'})
-                parser_page_url = f"/?{query_params}"
-                st.write(f"**Generated Link:** [{parser_page_url}]({parser_page_url})")
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                if st.button(f"Generate Parser Page for {parser_name}", key=f"generate_{parser_name}"):
+                    query_params = urlencode({'parser': parser_name, 'client': 'True'})
+                    parser_page_url = f"/?{query_params}"
+                    st.write(f"**Generated Link:** [{parser_page_url}]({parser_page_url})")
 
-            # Delete parser button
-            if st.button(f"Delete {parser_name}", key=f"delete_{parser_name}"):
-                del st.session_state['parsers'][parser_name]
-                save_parsers()
-                st.success(f"Parser '{parser_name}' has been deleted.")
+            with col2:
+                # Delete parser button
+                if st.button(f"Delete {parser_name}", key=f"delete_{parser_name}"):
+                    del st.session_state['parsers'][parser_name]
+                    save_parsers()
+                    st.success(f"Parser '{parser_name}' has been deleted.")
+
