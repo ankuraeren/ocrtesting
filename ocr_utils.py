@@ -7,7 +7,7 @@ import time
 import pandas as pd
 import streamlit as st
 
-# Function to flatten nested JSON
+# Function to flatten nested JSON with better handling of lists
 def flatten_json(y):
     out = {}
     order = []
@@ -15,17 +15,22 @@ def flatten_json(y):
     def flatten(x, name=''):
         if isinstance(x, dict):
             for a in x:
-                flatten(x[a], name + a + '.')
+                flatten(x[a], f"{name}{a}__")
         elif isinstance(x, list):
-            i = 0
-            for a in x:
-                flatten(a, name + str(i) + '.')
-                i += 1
+            for i, a in enumerate(x):
+                # If the list items are dictionaries with a unique key, use it
+                if isinstance(a, dict) and 'Sr_No' in a:
+                    identifier = a.get('Sr_No', i)
+                    flatten(a, f"{name}{identifier}__")
+                else:
+                    flatten(a, f"{name}{i}__")
         else:
-            out[name[:-1]] = x
-            order.append(name[:-1])
+            out[name[:-2]] = x  # Remove the trailing '__'
+            order.append(name[:-2])
+
     flatten(y)
     return out, order
+
 
 # Function to generate comparison results (ignoring case differences)
 def generate_comparison_results(json1, json2):
