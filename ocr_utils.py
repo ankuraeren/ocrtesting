@@ -32,7 +32,7 @@ def flatten_json(y):
     return out, order
 
 
-# Function to generate comparison results (ignoring case differences)
+# Function to generate comparison results (consistent string comparison)
 def generate_comparison_results(json1, json2):
     flat_json1, order1 = flatten_json(json1)
     flat_json2, _ = flatten_json(json2)
@@ -42,14 +42,15 @@ def generate_comparison_results(json1, json2):
         val1 = flat_json1.get(key, "N/A")
         val2 = flat_json2.get(key, "N/A")
 
-        # Perform case-insensitive comparison if both values are strings
-        if isinstance(val1, str) and isinstance(val2, str):
-            match = (val1.lower() == val2.lower())
-        else:
-            match = (val1 == val2)
+        # Convert all values to strings for comparison
+        val1_str = str(val1).strip().lower() if val1 else ""
+        val2_str = str(val2).strip().lower() if val2 else ""
+
+        match = (val1_str == val2_str)
 
         comparison_results[key] = "✔" if match else "✘"
     return comparison_results
+    
 
 # Function to generate a DataFrame for the comparison
 def generate_comparison_df(json1, json2, comparison_results):
