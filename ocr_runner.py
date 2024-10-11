@@ -152,44 +152,24 @@ def run_parser(parsers):
                 with col2:
                     st.error(f"Request without Extra Accuracy failed. Status code: {response_no_extra.status_code}")
 
-            # Proceed only if both responses are successful
+            # Generate comparison results
             if success_extra and success_no_extra:
-                # Extract 'parsedData' from both responses
-                parsed_data_extra = response_json_extra.get('parsedData', {})
-                parsed_data_no_extra = response_json_no_extra.get('parsedData', {})
-
-                if not parsed_data_extra or not parsed_data_no_extra:
-                    st.error("Parsed data is missing in one or both responses.")
-                    return
-
-                # Generate comparison results using only 'parsedData'
-                comparison_results = generate_comparison_results(parsed_data_extra, parsed_data_no_extra)
+                comparison_results = generate_comparison_results(response_json_extra, response_json_no_extra)
 
                 # Display mismatched fields in a table
                 st.subheader("Mismatched Fields")
-                mismatch_df = generate_mismatch_df(parsed_data_extra, parsed_data_no_extra, comparison_results)
-                if not mismatch_df.empty:
-                    st.dataframe(
-                        mismatch_df.style.applymap(
-                            lambda x: 'background-color: #FFCCCC' if x == '✘' else '',
-                            subset=['Comparison']
-                        )
-                    )
-                else:
-                    st.success("No mismatches found.")
+                mismatch_df = generate_mismatch_df(response_json_extra, response_json_no_extra, comparison_results)
+                st.dataframe(mismatch_df)
 
-                # Display the comparison table with hierarchical keys
+                # Display the comparison table
                 st.subheader("Comparison Table")
-                comparison_table = generate_comparison_df(parsed_data_extra, parsed_data_no_extra, comparison_results)
-
+                comparison_table = generate_comparison_df(response_json_extra, response_json_no_extra, comparison_results)
                 gb = GridOptionsBuilder.from_dataframe(comparison_table)
                 gb.configure_pagination(paginationAutoPageSize=True)
                 gb.configure_side_bar()
                 gb.configure_selection('single')
-                gb.configure_columns(['Attribute'], pinned=True, lock_position=True)
-                gb.configure_column('Comparison', cellStyle={'color': 'red'}, headerCheckboxSelection=True)
                 grid_options = gb.build()
-                AgGrid(comparison_table, gridOptions=grid_options, height=600, theme='streamlit', enable_enterprise_modules=True)
+                AgGrid(comparison_table, gridOptions=grid_options, height=500, theme='streamlit', enable_enterprise_modules=True)
 
                 # Display the full comparison JSON after the table
                 st.subheader("Comparison JSON")
@@ -197,5 +177,3 @@ def run_parser(parsers):
 
             else:
                 st.error("Comparison failed. One or both requests were unsuccessful.")
-
-
